@@ -1712,7 +1712,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
           </motion.div>
           <div>
             <p className="eyebrow">
-              {f.category} / {f.director}
+              {f.category}{f.director !== "No disponible" && f.director !== "Por confirmar" ? ` / ${f.director}` : ""}
             </p>
             <h1>{f.title}</h1>
             {f.original && <p className="original-title">{f.original}</p>}
@@ -1725,10 +1725,10 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
             </div>
             <p className="detail-synopsis">{f.synopsis}</p>
             <div className="hero-buttons">
-              <Button primary onClick={() => p.setTrailer(f)}>
+              {f.trailer && <Button primary onClick={() => p.setTrailer(f)}>
                 <Play size={16} fill="currentColor" />
                 Ver tráiler
-              </Button>
+              </Button>}
               <Button onClick={() => p.togglePlanned(f.id)}>
                 {item ? <Check size={17} /> : <Plus size={17} />}{" "}
                 {item ? "En mi biblioteca" : "Mi biblioteca"}
@@ -1773,7 +1773,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
         <div className="detail-tabs">
           {[
             "Información",
-            "Reparto",
+            ...(f.cast.length || f.director !== "No disponible" ? ["Reparto"] : []),
             ...(f.type === "tv" && f.source!=="mal" && f.source!=="jikan" ? ["Episodios"] : []),
             "Similares",
             "Tráiler",
@@ -1914,16 +1914,13 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
               <div className="where-to-watch">
                 <Globe size={20} />
                 <h4>¿Dónde verla?</h4>
-                <p>
-                  Consulta las opciones legales y su disponibilidad actual en tu
-                  región.
-                </p>
+                <p>{animeProvider ? `Consulta la ficha original en ${providerName}; la fuente no incluye disponibilidad por plataforma.` : "Consulta las opciones legales y su disponibilidad actual en tu región."}</p>
                 <a
                   href={animeProvider ? sourceLink(f) : `https://www.themoviedb.org/${f.type}/${f.tmdb}/watch?locale=${p.archive.settings.country}`}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Consultar plataformas <ArrowUpRight size={15} />
+                  {animeProvider ? "Ver ficha original" : "Consultar plataformas"} <ArrowUpRight size={15} />
                 </a>
                 <small>{animeProvider ? `Información de ${providerName}` : "Disponibilidad por JustWatch / TMDB"}</small>
               </div>
