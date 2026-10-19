@@ -1,4 +1,5 @@
 import { films, matches, fromTMDB } from "@/lib/catalog";
+import { cachedFetch } from "@/lib/upstream";
 import { setting } from "@/lib/server-config";
 export async function GET(request: Request) {
   const u = new URL(request.url),
@@ -17,19 +18,7 @@ export async function GET(request: Request) {
   if (action === "season" && !/^\d{1,3}$/.test(season))
     return Response.json({ error: "Temporada inválida" }, { status: 400 });
   const token = setting("TMDB_READ_ACCESS_TOKEN");
-  if (!token) {
-    if (action === "season")
-      return Response.json({
-        episodes: [],
-        source: "editorial",
-        configured: false,
-      });
-    return Response.json({
-      results: films.filter((f) => matches(f, q)),
-      source: "editorial",
-      configured: false,
-    });
-  }
+  if (!token) return Response.json({error:"TMDB no está configurado"},{status:503});
   const path =
     action === "search"
       ? "search/multi"
@@ -40,14 +29,14 @@ export async function GET(request: Request) {
           : action === "videos"
             ? `${type}/${id}/videos`
             : `${type}/${id}`;
-  const target = new URL(`https://api.themoviedb.org/3/${path}`);
+  const target = new URL(`https://api.themoviedb.org/3/${u.searchParams.get("category") === "Tendencias" ? "trending/all/week" : path}`);
   target.searchParams.set("language", "es-MX");
   target.searchParams.set("include_adult", "false");
   if (action === "search") target.searchParams.set("query", q);
   if (action === "details")
     target.searchParams.set(
       "append_to_response",
-      "credits,videos,watch/providers,recommendations",
+      "credits,videos,watch/providers,recommendations,external_ids",
     );
   const page = u.searchParams.get("page") || "1";
   if (!/^\d{1,3}$/.test(page))
@@ -61,7 +50,7 @@ export async function GET(request: Request) {
   if (action === "discover" && category === "K-dramas")
     target.searchParams.set("with_origin_country", "KR");
   try {
-    const response = await fetch(target, {
+    const response = await cachedFetch(target.toString(), {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       signal: AbortSignal.timeout(10000),
     });
@@ -86,7 +75,7 @@ export async function GET(request: Request) {
               configured: true,
             }
           : { ...data, configured: true };
-    return Response.json(result, {
+    return Response.json({...result, source:"tmdb"}, {
       headers: { "Cache-Control": "private, max-age=300" },
     });
   } catch {

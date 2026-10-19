@@ -76,6 +76,7 @@ import {
   matches,
   statuses,
   registerFilms,
+  sourceLink,
   type Film,
   type Category,
 } from "@/lib/catalog";
@@ -90,6 +91,7 @@ import {
   type LibraryItem,
   type Memory,
 } from "@/lib/archive";
+import ProfileEditor from "@/components/ProfileEditor";
 import AuthPage from "@/components/AuthPage";
 import LocalPlayer from "@/components/LocalPlayer";
 import { useCatalog } from "@/lib/useCatalog";
@@ -229,8 +231,7 @@ export default function Cinema() {
     [editMemory, setEditMemory] = useState<Memory | null>(null);
   const [toast, setToast] = useState(""),
     [notifications, setNotifications] = useState(false),
-    [mobileMenu, setMobileMenu] = useState(false),
-    [authOpen, setAuthOpen] = useState(false);
+    [mobileMenu, setMobileMenu] = useState(false);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null),
     [cloudReady, setCloudReady] = useState(false),
     [cloudEnabled, setCloudEnabled] = useState(false),
@@ -247,7 +248,13 @@ export default function Cinema() {
     toastTimer.current = setTimeout(() => setToast(""), 3400);
   }, []);
   const update = useCallback(
-    (fn: (a: Archive) => Archive) => setArchive((a) => fn(a)),
+    (fn: (a: Archive) => Archive) => setArchive((a) => {
+      const next = fn(a);
+      const ids = new Set([...Object.keys(next.library), ...next.top, ...next.profile.four, ...next.memories.map(m => m.film), ...next.collections.flatMap(c => c.films)]);
+      const catalog = new Map((next.catalog || []).map(f => [f.id, f]));
+      for (const f of films) if (ids.has(f.id)) catalog.set(f.id, f);
+      return { ...next, catalog: [...catalog.values()] };
+    }),
     [],
   );
   const navigate = useCallback((target: string) => {
@@ -279,6 +286,8 @@ export default function Cinema() {
     };
     routeChange();
     window.addEventListener("hashchange", routeChange);
+    if(new URLSearchParams(location.search).get("recovery") === "1"){sessionStorage.setItem("afterscene.passwordRecovery","1");setRoute("login");}
+
     let unsub: (() => void) | undefined;
     getSupabase()
       .then(async (c) => {
@@ -291,7 +300,7 @@ export default function Cinema() {
         const session = await c.auth.getSession();
         if (active) setUser(session.data.session?.user || null);
         const listener = c.auth.onAuthStateChange((_e, s) => {
-          if (active) setUser(s?.user || null);
+          if (active) {setUser(s?.user || null);if(_e === "PASSWORD_RECOVERY"){sessionStorage.setItem("afterscene.passwordRecovery","1");navigate("login");}}
         });
         unsub = () => listener.data.subscription.unsubscribe();
         setCloudReady(true);
@@ -397,7 +406,7 @@ export default function Cinema() {
     return () => clearTimeout(timer);
   }, [archive, user, announce]);
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(query), 250);
+    const t = setTimeout(() => setDebounced(query), 300);
     return () => clearTimeout(t);
   }, [query]);
   useEffect(() => {
@@ -427,7 +436,7 @@ export default function Cinema() {
           y: 0,
           duration: 0.5,
           ease: "power2.out",
-          clearProps: "all",
+          clearProps: "opacity,transform",
         },
       );
     }, content);
@@ -440,6 +449,7 @@ export default function Cinema() {
   ) => {
     update((a) => ({
       ...a,
+      catalog: [...(a.catalog || []).filter(f=>f.id!==id), getFilm(id)],
       library: {
         ...a.library,
         [id]: {
@@ -592,11 +602,7 @@ export default function Cinema() {
                 onClick={() => navigate("perfil")}
               >
                 <div className="avatar">
-                  <img
-                    className="avatar-photo"
-                    src="/assets/profile-avatar.jpg"
-                    alt=""
-                  />
+                  {archive.profile.avatar ? <img className="avatar-photo" src={archive.profile.avatar} alt="Tu foto de perfil"/> : <UserRound size={20}/>}
                 </div>
                 <span>
                   <b>{archive.profile.name}</b>
@@ -642,11 +648,7 @@ export default function Cinema() {
                   onClick={() => navigate("perfil")}
                   aria-label="Abrir mi perfil"
                 >
-                  <img
-                    className="avatar-photo"
-                    src="/assets/profile-avatar.jpg"
-                    alt=""
-                  />
+                  {archive.profile.avatar ? <img className="avatar-photo" src={archive.profile.avatar} alt="Tu foto de perfil"/> : <UserRound size={20}/>}
                 </button>
               </div>
               {notifications && (
@@ -807,7 +809,7 @@ export default function Cinema() {
               )}
               <p className="muted search-count">
                 {debounced
-                  ? "Resultados en la selección de AFTERSCENE"
+                  ? "Resultados del catálogo"
                   : "Historias para descubrir"}
               </p>
               {searchFilms
@@ -836,7 +838,7 @@ export default function Cinema() {
                     <span>
                       <b>{f.title}</b>
                       <small>
-                        {f.year} · {f.category} · {f.director}
+                        {f.year || "—"} · {f.category} · {f.director}
                       </small>
                     </span>
                     <ArrowUpRight size={18} />
@@ -866,7 +868,7 @@ export default function Cinema() {
                   <iframe
                     key={trailer.id}
                     src={`https://www.youtube-nocookie.com/embed/${trailer.trailer}?rel=0&autoplay=0`}
-                    title={`Tráiler oficial de ${trailer.title}`}
+                    title={`Tráiler de ${trailer.title}`}
                     allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                     allowFullScreen
                   />
@@ -875,18 +877,18 @@ export default function Cinema() {
                     <FilmIcon />
                     <h3>Sin tráiler en esta selección</h3>
                     <a
-                      href={`https://www.themoviedb.org/${trailer.type}/${trailer.tmdb}/videos`}
+                      href={sourceLink(trailer)}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Consultar videos en TMDB <ExternalLink size={15} />
+                      Consultar fuente original <ExternalLink size={15} />
                     </a>
                   </div>
                 )}
               </div>
             )}
             <p className="modal-footnote">
-              Tráiler oficial en YouTube. La reproducción depende de la
+              Tráiler de la fuente original en YouTube. La reproducción depende de la
               disponibilidad regional del video.
             </p>
           </Modal>
@@ -908,12 +910,6 @@ export default function Cinema() {
               announce("Un recuerdo más para tu archivo.");
               navigate("recuerdos");
             }}
-          />
-          <AuthModal
-            open={authOpen}
-            onClose={() => setAuthOpen(false)}
-            enabled={cloudEnabled}
-            announce={announce}
           />
           <AnimatePresence>
             {toast && (
@@ -996,7 +992,7 @@ function Poster({
         <h3>{f.title}</h3>
         <div className="poster-meta">
           <span>
-            {f.year} <i>·</i>{" "}
+            {f.year || "—"} <i>·</i>{" "}
             {f.category === "Películas"
               ? "Película"
               : f.category === "Anime"
@@ -1007,7 +1003,7 @@ function Poster({
           </span>
           <span>
             <Star size={11} fill="currentColor" />
-            {f.score.toFixed(1)}
+            {f.score ? f.score.toFixed(1) : "—"}
           </span>
         </div>
       </button>
@@ -1081,6 +1077,7 @@ function FilmRow({
 function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
   const [hero, setHero] = useState(0),
     [paused, setPaused] = useState(false);
+  const trending = useCatalog("", "Tendencias");
   const featured = [films[0], films[1], films[2]];
   const f = featured[hero];
   useEffect(() => {
@@ -1124,11 +1121,7 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
           <motion.img
             key={f.id}
             className="hero-backdrop"
-            src={
-              f.id === "interstellar"
-                ? "/assets/hero-interstellar-reference.webp"
-                : image(f, "backdrop")
-            }
+            src={image(f, "backdrop")}
             alt=""
             initial={{ opacity: 0, scale: 1.025 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1159,18 +1152,14 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
               {f.title}
             </h1>
             <div className="hero-meta">
-              <span>{f.year}</span>
+              <span>{f.year || "—"}</span>
               <i /> <span>{f.duration}</span>
               <i />
               <span>{f.genre}</span>
-              <span className="age-tag">
-                {f.id === "oppenheimer" ? "R" : "PG-13"}
-              </span>
+              
             </div>
             <p className="hero-description">
-              {f.id === "interstellar"
-                ? "Un grupo de exploradores viaja a través de un agujero de gusano en busca de un nuevo hogar para la humanidad."
-                : f.synopsis}
+              {f.synopsis}
             </p>
             <div className="hero-buttons">
               <Button primary onClick={() => p.setTrailer(f)}>
@@ -1197,7 +1186,7 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
         <div className="hero-bottom">
           <span>
             <Star size={12} fill="currentColor" />
-            {f.score.toFixed(1)} <span>EN TMDB</span>
+            {f.score ? f.score.toFixed(1) : "—"} <span>EN TMDB</span>
           </span>
           <div className="hero-pagination">
             {featured.map((v, i) => (
@@ -1248,24 +1237,17 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
         <FilmRow
           {...p}
           context="trends"
-          ids={[
-            "dune-2",
-            "last-of-us",
-            "oppenheimer",
-            "poor-things",
-            "batman",
-            "spiderverse",
-          ]}
+          ids={(trending.remote || []).slice(0, 12).map(f => f.id)}
         />
       </section>
-      <section className="content-section continue">
+      {Object.values(p.archive.library).some(item => item.status === "watching") && <section className="content-section continue">
         <SectionHeading
           title="Continuar viendo"
           action="Ir a mi biblioteca"
           onAction={() => p.navigate("biblioteca")}
         />
         <div className="landscape-grid">
-          {["interstellar", "last-of-us", "dune-2"].map((id, i) => {
+          {Object.entries(p.archive.library).filter(([,item])=>item.status === "watching").map(([id], i) => {
             const f = getFilm(id);
             return (
               <button
@@ -1276,21 +1258,13 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
                 <img src={image(f, "backdrop")} alt="" loading="lazy" />
                 <div className="landscape-shade" />
                 <span className="landscape-label">
-                  {i === 1
-                    ? "SIGUES ESTA SERIE"
-                    : i === 0
-                      ? "PARA VOLVER A SENTIR"
-                      : "EN TU LISTA DE DESEOS"}
+                  {statuses[p.archive.library[id].status]}
                 </span>
                 <div>
                   <span>
                     <b>{f.title}</b>
                     <small>
-                      {i === 1
-                        ? "El viaje continúa"
-                        : i === 0
-                          ? "Algunas historias merecen otra vez"
-                          : "Tu próximo gran descubrimiento"}
+                      {f.category}
                     </small>
                   </span>
                   <span className="landscape-arrow">
@@ -1301,7 +1275,7 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
             );
           })}
         </div>
-      </section>
+      </section>}
       <section className="editorial-banner">
         <img
           src={image(getFilm("past-lives"), "backdrop")}
@@ -1411,7 +1385,8 @@ function Explore(p: Common & { route: string }) {
     }, 250);
     return () => clearTimeout(t);
   }, [query]);
-  const live = useCatalog(q, category, page);
+  const [animeMode,setAnimeMode] = useState("top");
+  const live = useCatalog(q, category, page, animeMode);
   const data = (live.remote || films)
     .filter(
       (f) =>
@@ -1481,7 +1456,7 @@ function Explore(p: Common & { route: string }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Busca por título, director, actor o género"
+          placeholder="Busca por título o nombre de una persona"
           aria-label="Buscar películas y series"
         />
         <button
@@ -1492,6 +1467,7 @@ function Explore(p: Common & { route: string }) {
           <span>Filtros</span>
         </button>
       </div>
+      {live.notice && <p className="catalog-notice" role="status">{live.notice}</p>}
       <div className="catalog-tabs chips">
         {cats.map((c) => (
           <button
@@ -1506,6 +1482,7 @@ function Explore(p: Common & { route: string }) {
           </button>
         ))}
       </div>
+      {category === "Anime" && <div className="chips anime-modes">{[["top","Mejor valorados"],["season","En emisión"],["movies","Películas de anime"]].map(([id,label])=><button key={id} className={`chip ${animeMode===id?"active":""}`} onClick={()=>{setAnimeMode(id);setPage(1);}}>{label}</button>)}</div>}
       <div className="filter-row">
         <label>
           <span className="sr-only">Género</span>
@@ -1598,7 +1575,7 @@ function Explore(p: Common & { route: string }) {
         <span>
           {live.loading
             ? "Buscando historias..."
-            : `${data.length} historias ${live.remote ? "en TMDB" : "en esta selección"}`}
+            : `${data.length} historias ${live.remote ? (live.source === "jikan" ? "en MyAnimeList" : "en TMDB") : "en la copia consultada"}`}
         </span>
         <label>
           Ordenar por{" "}
@@ -1607,7 +1584,7 @@ function Explore(p: Common & { route: string }) {
             onChange={(e) => setSort(e.target.value)}
             aria-label="Ordenar resultados"
           >
-            <option value="popular">Selección editorial</option>
+            <option value="popular">Orden de la fuente</option>
             <option value="rating">Mejor calificadas</option>
             <option value="recent">Más recientes</option>
             <option value="title">Título A–Z</option>
@@ -1649,7 +1626,7 @@ function Explore(p: Common & { route: string }) {
         </div>
       )}
       <p className="catalog-source">
-        Selección editorial de {films.length} títulos · Metadatos e imágenes de{" "}
+        Catálogo consultado en {live.source === "jikan" ? "Jikan / MyAnimeList" : "TMDB"} · {" "}
         <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
           TMDB
         </a>
@@ -1664,14 +1641,16 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
   const [tab, setTab] = useState("Información"),
     [season, setSeason] = useState(1),
     [episodes, setEpisodes] = useState<any[]>([]),
-    [loading, setLoading] = useState(false);
+    [loading, setLoading] = useState(false),
+    [tvdb, setTvdb] = useState<any>(null), [moreEpisodes, setMoreEpisodes] = useState(false);
+  useEffect(()=>{setTvdb(null);if(!f.tvdb || f.type !== "tv")return;const ac=new AbortController();fetch(`/api/tvdb?id=${f.tvdb}`,{signal:ac.signal}).then(r=>r.ok?r.json():null).then(d=>{if(!ac.signal.aborted)setTvdb(d);}).catch(()=>{});return ()=>ac.abort();},[f.id,f.tvdb]);
   const item = p.archive.library[f.id];
   useEffect(() => {
     setTab("Información");
     setSeason(1);
     setResolved(null);
     const ac = new AbortController();
-    fetch(`/api/catalog?action=details&type=${p.film.type}&id=${p.film.tmdb}`, {
+    fetch(p.film.source === "jikan" ? `/api/anime?action=details&id=${p.film.mal}` : `/api/catalog?action=details&type=${p.film.type}&id=${p.film.tmdb}`, {
       signal: ac.signal,
     })
       .then((r) => r.json())
@@ -1688,12 +1667,13 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
     if (tab !== "Episodios") return;
     const ac = new AbortController();
     setLoading(true);
-    fetch(`/api/catalog?action=season&type=tv&id=${f.tmdb}&season=${season}`, {
+    fetch(f.source === "jikan" ? `/api/anime?action=episodes&id=${f.mal}&page=${season}` : `/api/catalog?action=season&type=tv&id=${f.tmdb}&season=${season}`, {
       signal: ac.signal,
     })
       .then((r) => r.json())
       .then((d: any) => {
         setEpisodes(d.episodes || []);
+        setMoreEpisodes(!!d.hasNext);
         setLoading(false);
       })
       .catch(() => {
@@ -1730,7 +1710,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
             <h1>{f.title}</h1>
             {f.original && <p className="original-title">{f.original}</p>}
             <div className="hero-meta">
-              <span>{f.year}</span>
+              <span>{f.year || "—"}</span>
               <i />
               <span>{f.duration}</span>
               <i />
@@ -1764,8 +1744,8 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
             <div className="detail-rating">
               <span>
                 <Star size={16} fill="currentColor" />
-                <b>{f.score.toFixed(1)}</b>
-                <small>/ 10 en TMDB</small>
+                <b>{f.score ? f.score.toFixed(1) : "—"}</b>
+                <small>/ 10 en {f.source === "jikan" ? "MyAnimeList" : "TMDB"}</small>
               </span>
               <div className="rating-separator" />
               <span className="film-badge">
@@ -1818,9 +1798,11 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
                 )}
                 <div>
                   <dt>Estreno</dt>
-                  <dd>{f.year}</dd>
+                  <dd>{f.year || "—"}</dd>
                 </div>
               </dl>
+              {f.episodeCount != null && <p>{f.episodeCount} episodios · {f.airingStatus}</p>}
+              {tvdb && <div className="source-facts"><p>TheTVDB · {tvdb.status}{tvdb.network ? ` · ${tvdb.network}` : ""}</p><a className="text-link" href={tvdb.sourceUrl} target="_blank" rel="noreferrer">Ver registro vinculado en TheTVDB <ExternalLink size={14}/></a></div>}
               <h2>Reparto principal</h2>
               <div className="cast-list">
                 {f.cast.map((name, i) => (
@@ -1839,11 +1821,11 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
               </div>
               <a
                 className="text-link"
-                href={`https://www.themoviedb.org/${f.type}/${f.tmdb}`}
+                href={sourceLink(f)}
                 target="_blank"
                 rel="noreferrer"
               >
-                Ver ficha completa en TMDB <ExternalLink size={14} />
+                Ver ficha en {f.source === "jikan" ? "MyAnimeList" : "TMDB"} <ExternalLink size={14} />
               </a>
             </div>
             <div className="personal-film-panel">
@@ -1916,13 +1898,13 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
                   región.
                 </p>
                 <a
-                  href={`https://www.themoviedb.org/${f.type}/${f.tmdb}/watch?locale=${p.archive.settings.country}`}
+                  href={f.source === "jikan" ? sourceLink(f) : `https://www.themoviedb.org/${f.type}/${f.tmdb}/watch?locale=${p.archive.settings.country}`}
                   target="_blank"
                   rel="noreferrer"
                 >
                   Consultar plataformas <ArrowUpRight size={15} />
                 </a>
-                <small>Disponibilidad por JustWatch / TMDB</small>
+                <small>{f.source === "jikan" ? "Información de MyAnimeList" : "Disponibilidad por JustWatch / TMDB"}</small>
               </div>
             </div>
           </div>
@@ -2000,15 +1982,15 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
         ) : (
           <div>
             <div className="episode-toolbar">
-              <h2>Temporadas y episodios</h2>
+              <h2>{f.source === "jikan" ? "Episodios · página " + season : "Temporadas y episodios"}</h2>
               <select
                 value={season}
                 onChange={(e) => setSeason(Number(e.target.value))}
                 aria-label="Temporada"
               >
-                {Array.from({ length: f.seasons || 1 }, (_, i) => (
+                {Array.from({ length: f.source === "jikan" ? Math.max(season + (moreEpisodes ? 1 : 0), Math.ceil((f.episodeCount || 1)/100)) : f.seasons || 1 }, (_, i) => (
                   <option value={i + 1} key={i}>
-                    Temporada {i + 1}
+                    {f.source === "jikan" ? "Página" : "Temporada"} {i + 1}
                   </option>
                 ))}
               </select>
@@ -2021,7 +2003,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
             ) : episodes.length ? (
               <div className="episode-list">
                 {episodes.map((e) => {
-                  const code = `${season}-${e.episode_number}`,
+                  const code = f.source === "jikan" ? `mal-${e.episode_number}` : `${season}-${e.episode_number}`,
                     done = item?.episodes?.includes(code);
                   return (
                     <div key={code}>
@@ -2060,16 +2042,15 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
                 <Tv />
                 <h3>Consulta el listado completo de episodios</h3>
                 <p>
-                  El seguimiento automático de episodios se activa al conectar
-                  TMDB en el servidor.
+                  No hay episodios disponibles en la fuente en este momento.
                 </p>
                 <a
                   className="btn"
-                  href={`https://www.themoviedb.org/tv/${f.tmdb}/season/${season}`}
+                  href={sourceLink(f)}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Ver temporada en TMDB <ExternalLink size={15} />
+                  Consultar fuente <ExternalLink size={15} />
                 </a>
               </div>
             )}
@@ -2278,7 +2259,7 @@ function LibraryPage(p: Common & { favorites?: boolean }) {
                   <span>
                     <b>{f.title}</b>
                     <small>
-                      {f.year} · {f.genre}
+                      {f.year || "—"} · {f.genre}
                     </small>
                   </span>
                 </button>
@@ -2539,7 +2520,7 @@ function Tops(p: Common) {
                 <span>
                   <h3>{f.title}</h3>
                   <p>
-                    {f.year} · {f.director}
+                    {f.year || "—"} · {f.director}
                   </p>
                   <small>{f.genre}</small>
                 </span>
@@ -2618,7 +2599,7 @@ function Tops(p: Common) {
                 .filter((f) => !p.archive.top.includes(f.id))
                 .map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.title} ({f.year})
+                    {f.title} ({f.year || "—"})
                   </option>
                 ))}
             </select>
@@ -2662,7 +2643,7 @@ function MemoryCard({
           <span>
             {f.title}
             <small>
-              {f.year}
+              {f.year || "—"}
               {m.people ? ` · Con ${m.people}` : ""}
             </small>
           </span>
@@ -3023,10 +3004,7 @@ function MemoryEditor({
 }
 
 function Profile(p: Common) {
-  const [editing, setEditing] = useState(false),
-    [name, setName] = useState(p.archive.profile.name),
-    [bio, setBio] = useState(p.archive.profile.bio),
-    [four, setFour] = useState(p.archive.profile.four);
+  const [editing, setEditing] = useState(false);
   const items = Object.entries(p.archive.library),
     favorites = films.filter((f) => p.archive.library[f.id]?.favorite);
   const stats = [
@@ -3047,30 +3025,20 @@ function Profile(p: Common) {
     ["Tops", p.archive.top.length],
     ["Recuerdos", p.archive.memories.length],
   ];
-  const startEdit = () => {
-    setName(p.archive.profile.name);
-    setBio(p.archive.profile.bio);
-    setFour(p.archive.profile.four);
-    setEditing(true);
-  };
+  const startEdit = () => setEditing(true);
   return (
-    <div className="standard-page profile-reference">
-      <section className="profile-hero page-intro">
+    <div className="standard-page profile-reference" style={{"--profile-accent": p.archive.profile.accent || "#e4e4e7", backgroundImage: p.archive.profile.background ? `linear-gradient(#050608df,#050608ed),url(${p.archive.profile.background})` : undefined} as React.CSSProperties}>
+      <section className="profile-hero page-intro" style={{backgroundImage:p.archive.profile.banner ? `linear-gradient(0deg,#050608ee,#05060822),url(${p.archive.profile.banner})` : undefined}}>
         <div className="profile-head">
           <div className="avatar profile-avatar">
-            <img
-              className="avatar-photo"
-              src="/assets/profile-avatar.jpg"
-              alt="Foto de perfil de ejemplo"
-            />
+            {p.archive.profile.avatar ? <img className="avatar-photo" src={p.archive.profile.avatar} alt="Tu foto de perfil"/> : <UserRound size={20}/>}
           </div>
           <div>
             <h1>{p.archive.profile.name}</h1>
-            <span className="profile-handle">@miarchivo</span>
+            {p.archive.profile.handle && <span className="profile-handle">@{p.archive.profile.handle}</span>}
             <p>
               {p.archive.profile.bio}
-              <br />
-              Cine, series, anime y mucho más.
+              {p.archive.profile.location && <><br/>{p.archive.profile.location}</>}
             </p>
           </div>
           <Button onClick={startEdit}>Editar perfil</Button>
@@ -3127,11 +3095,7 @@ function Profile(p: Common) {
           ].map((c) => (
             <button key={c.title} onClick={() => p.navigate("tops")}>
               <img
-                src={
-                  c.film === "interstellar"
-                    ? "/assets/hero-interstellar-reference.webp"
-                    : image(getFilm(c.film), "backdrop")
-                }
+                src={image(getFilm(c.film), "backdrop")}
                 alt=""
               />
               <h3>{c.title}</h3>
@@ -3188,7 +3152,7 @@ function Profile(p: Common) {
                 <img src={image(f)} alt={f.title} />
                 <div>
                   <h3>{f.title}</h3>
-                  <p>{f.year}</p>
+                  <p>{f.year || "—"}</p>
                 </div>
               </button>
             );
@@ -3200,64 +3164,8 @@ function Profile(p: Common) {
         onClose={() => setEditing(false)}
         title="Editar perfil"
       >
-        <form
-          className="form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (new Set(four).size !== 4) {
-              p.announce("Elige cuatro historias diferentes");
-              return;
-            }
-            p.update((a) => ({
-              ...a,
-              profile: { name: name.trim(), bio: bio.trim(), four },
-            }));
-            setEditing(false);
-            p.announce("Perfil actualizado");
-          }}
-        >
-          <label>
-            Nombre
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={45}
-              required
-            />
-          </label>
-          <label>
-            Biografía
-            <textarea
-              rows={3}
-              value={bio}
-              maxLength={240}
-              onChange={(e) => setBio(e.target.value)}
-            />
-          </label>
-          <p className="eyebrow">MIS CUATRO HISTORIAS</p>
-          {four.map((id, i) => (
-            <label key={i}>
-              Historia {i + 1}
-              <select
-                value={id}
-                onChange={(e) =>
-                  setFour((v) =>
-                    v.map((id, j) => (i === j ? e.target.value : id)),
-                  )
-                }
-              >
-                {films.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-          <Button primary type="submit">
-            Guardar cambios
-          </Button>
-        </form>
+        <ProfileEditor profile={p.archive.profile} onSave={profile => {p.update(a=>({...a,profile}));setEditing(false);p.announce("Perfil actualizado");}}/>
+
       </Modal>
     </div>
   );
@@ -3795,106 +3703,5 @@ function SettingsPage(
         </section>
       </div>
     </div>
-  );
-}
-
-function AuthModal({
-  open,
-  onClose,
-  enabled,
-  announce,
-}: {
-  open: boolean;
-  onClose: () => void;
-  enabled: boolean;
-  announce: (s: string) => void;
-}) {
-  const [signup, setSignup] = useState(false),
-    [email, setEmail] = useState(""),
-    [password, setPassword] = useState(""),
-    [pending, setPending] = useState(false),
-    [error, setError] = useState("");
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={
-        signup ? "Un archivo para toda tu vida" : "Bienvenido a tu archivo"
-      }
-    >
-      <form
-        className="form"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!enabled) return;
-          setPending(true);
-          setError("");
-          try {
-            const c = await getSupabase();
-            if (!c) throw Error("Configura Supabase para iniciar sesión.");
-            const result = signup
-              ? await c.auth.signUp({ email, password })
-              : await c.auth.signInWithPassword({ email, password });
-            if (result.error) throw result.error;
-            announce(
-              signup && !result.data.session
-                ? "Revisa tu correo para confirmar tu cuenta."
-                : "Tu archivo está listo.",
-            );
-            setPassword("");
-            onClose();
-          } catch (e) {
-            setError(
-              e instanceof Error ? e.message : "No se pudo iniciar sesión.",
-            );
-          } finally {
-            setPending(false);
-          }
-        }}
-      >
-        <p className="muted">Tus historias, tus recuerdos. Siempre contigo.</p>
-        <label>
-          Correo electrónico
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label>
-          Contraseña
-          <input
-            type="password"
-            required
-            minLength={8}
-            autoComplete={signup ? "new-password" : "current-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <Button primary type="submit" disabled={pending || !enabled}>
-          {pending ? <LoaderCircle className="spin" size={16} /> : null}
-          {signup ? "Crear cuenta" : "Iniciar sesión"}
-        </Button>
-        <button
-          type="button"
-          className="text-link"
-          onClick={() => {
-            setSignup((v) => !v);
-            setError("");
-          }}
-        >
-          {signup ? "Ya tengo una cuenta" : "Crear una nueva cuenta"}
-          <ArrowRight size={14} />
-        </button>
-      </form>
-    </Modal>
   );
 }

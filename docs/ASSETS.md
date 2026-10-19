@@ -1,17 +1,9 @@
-# Imágenes y créditos
+# Imágenes y procedencia
 
-Los pósteres y fondos de la selección proceden de TMDB y se incluyen localmente para que la primera edición no dependa de una clave de API. Sus rutas de origen están en `lib/catalog.ts`. Las imágenes conservan los derechos de sus titulares. TMDB no respalda ni certifica AFTERSCENE.
+La aplicación utiliza pósteres y fotogramas reales de TMDB y las imágenes publicadas por Jikan/MyAnimeList. Las rutas de la selección inicial están en `data/catalog.json`; cada registro incluye su fuente y fecha de consulta. El acceso usa un fotograma de Interestelar de TMDB. El perfil empieza sin fotografías y solo muestra las que suba su propietario.
 
-Excepciones verificadas durante la implementación:
+Se retiraron los fondos de IA anteriores y el avatar de demostración. Las láminas Liner/AFTERSCENE del usuario se usan como referencia de composición, colores y controles; no se publican como interfaz ni como fotogramas.
 
-- Goblin: https://image.tmdb.org/t/p/original/sPkxHNw5BFvuCFGWw825TS7n6X3.jpg
-- Crash Landing on You: imagen de la ficha de TVmaze, https://static.tvmaze.com/uploads/images/original_untouched/235/588087.jpg
-- Dune: Parte Dos, fotograma promocional: https://spaces.filmstories.co.uk/uploads/2023/05/dune-part-two-1024x432.jpg
+Las copias locales históricas de imágenes reales incluyen Goblin (TMDB), Crash Landing on You (TVmaze) y un fotograma promocional de Dune: Parte Dos (Film Stories). La interfaz actual obtiene las imágenes desde las rutas de los registros de TMDB/Jikan.
 
-Las referencias Liner proporcionadas por el usuario se usaron como dirección visual; no se publicaron como capturas ni como interfaz de la app.
-
-Tráileres: embeds de YouTube con dominio `youtube-nocookie.com`, sin reproducción automática. La plataforma puede restringir un video según región, cuenta o permisos de inserción. Siempre se puede consultar la ficha del título en TMDB.
-
-Tipografías: DM Sans e Instrument Serif, distribuidas por Google Fonts. Iconos: Lucide. El monograma de AFTERSCENE es SVG propio.
-
-Los fondos `hero-interstellar-reference.webp` y `auth-reference.webp` son recreaciones generadas con la herramienta integrada a partir de las referencias del usuario; ver IMAGE_PROMPTS.md. El avatar de demostración es una fotografía de Timothée Chalamet de TMDB: https://image.tmdb.org/t/p/w185/BE2sdjpgsa2rNTFa66f7upkaOP.jpg.
+TMDB no respalda ni certifica AFTERSCENE. Las imágenes conservan los derechos de sus titulares. Las fichas enlazan a su fuente. Los tráileres usan YouTube sin autoplay. Tipografías: DM Sans e Instrument Serif de Google Fonts; iconos: Lucide; monograma: SVG del proyecto.

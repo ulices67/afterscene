@@ -26,7 +26,7 @@ export type Archive = {
   top: string[];
   memories: Memory[];
   collections: Collection[];
-  profile: { name: string; bio: string; four: string[] };
+  profile: { name: string; bio: string; four: string[]; avatar?: string; banner?: string; background?: string; accent?: string; location?: string; handle?: string };
   settings: {
     notifications?: boolean;
     motion: boolean;
@@ -36,60 +36,13 @@ export type Archive = {
   recent: string[];
 };
 export const seed: Archive = {
-  library: {
-    interstellar: {
-      status: "completed",
-      favorite: true,
-      rating: 10,
-      added: "2026-10-01",
-    },
-    "dune-2": { status: "planned", favorite: false, added: "2026-10-03" },
-    "last-of-us": {
-      status: "watching",
-      favorite: true,
-      added: "2026-10-02",
-      episodes: ["1-1", "1-2"],
-    },
-    oppenheimer: {
-      status: "completed",
-      favorite: true,
-      rating: 9,
-      added: "2026-10-04",
-    },
-    "your-name": {
-      status: "completed",
-      favorite: true,
-      rating: 10,
-      added: "2026-10-05",
-    },
-    "past-lives": { status: "planned", favorite: false, added: "2026-10-06" },
-    severance: { status: "watching", favorite: false, added: "2026-10-07" },
-  },
-  top: [
-    "interstellar",
-    "your-name",
-    "oppenheimer",
-    "dune-2",
-    "past-lives",
-    "blade-runner",
-  ],
-  memories: [],
-  collections: [
-    {
-      id: "weekend",
-      name: "Para un domingo sin prisa",
-      films: ["past-lives", "lalaland", "your-name"],
-    },
-  ],
-  profile: {
-    name: "Mi espacio",
-    bio: "Las películas terminan. Las historias se quedan.",
-    four: ["interstellar", "your-name", "past-lives", "dune-2"],
-  },
-  settings: { motion: true, country: "MX", autoplay: false },
-  recent: [],
+  library: {}, top: [], memories: [], collections: [],
+  profile: { name: "Mi perfil", bio: "", four: [] },
+  settings: { motion: true, country: "MX", autoplay: false }, recent: [],
 };
-export const storageKey = "afterscene.archive.v1";
+// v2 starts without the old sample library. v1 remains available for explicit import.
+export const storageKey = "afterscene.archive.v2";
+const profileImage = z.string().max(3000000).regex(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).optional();
 const id = z
   .string()
   .min(1)
@@ -103,7 +56,7 @@ const unique = (v: string[]) => new Set(v).size === v.length;
 const filmSchema = z
   .object({
     id,
-    tmdb: z.number().int().positive(),
+    tmdb: z.number().int().min(0),
     type: z.enum(["movie", "tv"]),
     title: z.string().max(300),
     year: z.number(),
@@ -165,7 +118,11 @@ const archiveSchema = z.object({
   profile: z.object({
     name: z.string().min(1).max(45),
     bio: z.string().max(240),
-    four: z.array(id).length(4).refine(unique),
+    four: z.array(id).max(4).refine(unique),
+    avatar: profileImage, banner: profileImage, background: profileImage,
+    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    location: z.string().max(80).optional(),
+    handle: z.string().max(30).regex(/^[a-zA-Z0-9_.-]*$/).optional(),
   }),
   settings: z.object({
     motion: z.boolean(),

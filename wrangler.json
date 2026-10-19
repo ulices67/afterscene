@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "afterscene",
+  "account_id": "e3dde56eb9a7a627f9654809220fc0af",
+  "main": "./build/sites-worker.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
+  "assets": { "directory": "./public" },
+  "durable_objects": { "bindings": [{ "name": "JIKAN_GATEWAY", "class_name": "JikanGateway" }] },
+  "migrations": [{ "tag": "jikan-v1", "new_sqlite_classes": ["JikanGateway"] }],
+  "observability": { "enabled": true }
+}
