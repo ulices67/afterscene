@@ -413,6 +413,7 @@ export default function Cinema() {
   }, []);
   useEffect(() => {
     if (
+      !content.current ||
       !archive.settings.motion ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
     )
