@@ -1804,3 +1804,10 @@ body {
 @media(max-width:1000px){.auth-real {padding:110px 5vw 60px;}.auth-real .auth-intro {left:5vw;max-width:42%;}.auth-real .auth-panel {width:350px;}.auth-real .auth-intro h1{font-size:42px;}}
 @media(max-width:700px){.auth-real {display:block;padding:110px 24px 50px;}.auth-art {inset:0 0 auto;height:370px;}.auth-art-shade{background:linear-gradient(0deg,#07080a,transparent 100%);}.auth-real .auth-intro{position:relative;left:auto;bottom:auto;max-width:none;margin:30px 0 40px;}.auth-real .auth-intro h1{font-size:36px;letter-spacing:-1px;}.auth-real .auth-intro p,.auth-kicker{display:none;}.auth-real .auth-panel{width:100%;padding:0;}.auth-real .auth-panel h2{font-size:31px;}.auth-film-credit{display:none;}.auth-real>header{left:24px;right:24px;}.auth-real>header>.brand{font-size:11px;letter-spacing:3px;}.auth-explore{font-size:10px;}.profile-uploads{grid-template-columns:1fr;}.profile-reference .profile-hero{padding:20px;min-height:200px;}.profile-reference .profile-avatar{width:74px;height:74px;}}
 .catalog-notice{font-size:12px;color:#c1bba5;line-height:1.7;padding:12px 16px;background:#ffffff06;border:1px solid #ffffff15;border-radius:8px;}.anime-modes{margin-bottom:18px;}
+
+/* Keep API synopses within the featured composition. */
+.hero-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+@media (min-width: 761px) {
+  .hero { height: 470px; }
+  .trends .poster-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 90px) / 6); overflow-x: auto; scrollbar-width: thin; padding-bottom: 10px; }
+}

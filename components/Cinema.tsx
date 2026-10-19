@@ -1156,7 +1156,7 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
               <i /> <span>{f.duration}</span>
               <i />
               <span>{f.genre}</span>
-              
+
             </div>
             <p className="hero-description">
               {f.synopsis}
