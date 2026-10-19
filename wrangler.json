@@ -8,5 +8,9 @@
   "keep_vars": true,
   "vars": { "MAL_CLIENT_ID": "e0fdae69ccb6862a0737d34281edb21e" },
   "assets": { "directory": "./public" },
+  "migrations": [
+    { "tag": "jikan-v1", "new_sqlite_classes": ["JikanGateway"] },
+    { "tag": "remove-jikan-v2", "deleted_classes": ["JikanGateway"] }
+  ],
   "observability": { "enabled": true }
 }
