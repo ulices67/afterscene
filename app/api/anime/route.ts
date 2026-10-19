@@ -28,9 +28,9 @@ async function queryMAL(action:string,q:string,id:string,page:number) {
 }
 async function queryKitsu(action:string,q:string,id:string,page:number) {
   const root='https://kitsu.io/api/edge';
-  const url=new URL(`${root}/${action==='episodes'?'episodes':action==='details'?`anime/${id}`:action==='top'?'trending/anime':'anime'}`);
+  const url=new URL(`${root}/${action==='episodes'?`anime/${id}/episodes`:action==='details'?`anime/${id}`:action==='top'?'trending/anime':'anime'}`);
   const offset=(page-1)*20;
-  if(action==='episodes') {url.searchParams.set('filter[animeId]',id);url.searchParams.set('sort','number');}
+  if(action==='episodes') url.searchParams.set('sort','number');
   if(action==='search') url.searchParams.set('filter[text]',q);
   if(action==='movies') {url.searchParams.set('filter[subtype]','movie');url.searchParams.set('sort','-averageRating');}
   if(action==='season') {const now=currentSeason();url.searchParams.set('filter[seasonYear]',String(now.year));url.searchParams.set('filter[season]',now.season);url.searchParams.set('sort','-averageRating');}
