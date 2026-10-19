@@ -6,8 +6,7 @@
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
   "keep_vars": true,
+  "vars": { "MAL_CLIENT_ID": "e0fdae69ccb6862a0737d34281edb21e" },
   "assets": { "directory": "./public" },
-  "durable_objects": { "bindings": [{ "name": "JIKAN_GATEWAY", "class_name": "JikanGateway" }] },
-  "migrations": [{ "tag": "jikan-v1", "new_sqlite_classes": ["JikanGateway"] }],
   "observability": { "enabled": true }
 }

@@ -4,8 +4,9 @@ export type Film = {
   id: string;
   tmdb: number;
   mal?: number;
+  kitsu?: number;
   tvdb?: number;
-  source?: "tmdb" | "jikan";
+  source?: "tmdb" | "mal" | "kitsu" | "jikan";
   retrievedAt?: string;
   episodeCount?: number;
   airingStatus?: string;
@@ -39,7 +40,7 @@ export const image = (f: Film, kind: "poster" | "backdrop" = "poster") => {
   if (/^https:\/\//.test(src)) return src;
   return `https://image.tmdb.org/t/p/${kind === "poster" ? "w500" : "w1280"}/${src}`;
 };
-export const sourceLink = (f: Film) => f.source === "jikan" ? `https://myanimelist.net/anime/${f.mal}` : `https://www.themoviedb.org/${f.type}/${f.tmdb}`;
+export const sourceLink = (f: Film) => f.source === "kitsu" ? `https://kitsu.app/anime/${f.kitsu}` : f.source === "mal" || f.source === "jikan" ? `https://myanimelist.net/anime/${f.mal}` : `https://www.themoviedb.org/${f.type}/${f.tmdb}`;
 export const registerFilms = (incoming: Film[]) => {
   for (const f of incoming) {
     const i = films.findIndex((v) => v.id === f.id);

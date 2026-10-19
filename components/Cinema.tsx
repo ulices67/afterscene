@@ -536,7 +536,7 @@ export default function Cinema() {
   return (
     <MotionConfig reducedMotion={archive.settings.motion ? "user" : "always"}>
       <LayoutGroup>
-        <div className="app-shell" data-motion={archive.settings.motion}>
+        <div className={`app-shell ${(route === "anime" || selected?.category === "Anime") ? "anime-world" : ""} ${archive.settings.visualTheme === "storybook" ? "storybook-theme" : ""}`} data-motion={archive.settings.motion}>
           <aside className="sidebar">
             <a className="brand" href="#inicio" aria-label="AFTERSCENE inicio">
               afterscene<span>.</span>
@@ -1575,7 +1575,7 @@ function Explore(p: Common & { route: string }) {
         <span>
           {live.loading
             ? "Buscando historias..."
-            : `${data.length} historias ${live.remote ? (live.source === "jikan" ? "en MyAnimeList" : "en TMDB") : "en la copia consultada"}`}
+            : `${data.length} historias ${live.remote ? (live.source === "mal" ? "en MyAnimeList" : live.source === "kitsu" ? "en Kitsu" : "en TMDB") : "en la copia consultada"}`}
         </span>
         <label>
           Ordenar por{" "}
@@ -1626,9 +1626,9 @@ function Explore(p: Common & { route: string }) {
         </div>
       )}
       <p className="catalog-source">
-        Catálogo consultado en {live.source === "jikan" ? "Jikan / MyAnimeList" : "TMDB"} · {" "}
-        <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
-          TMDB
+        Catálogo consultado en {" "}
+        <a href={live.source === "mal" ? "https://myanimelist.net" : live.source === "kitsu" ? "https://kitsu.app" : "https://www.themoviedb.org"} target="_blank" rel="noreferrer">
+          {live.source === "mal" ? "MyAnimeList" : live.source === "kitsu" ? "Kitsu" : "TMDB"}
         </a>
       </p>
     </div>
@@ -1638,11 +1638,14 @@ function Explore(p: Common & { route: string }) {
 function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
   const [resolved, setResolved] = useState<Film | null>(null);
   const f = resolved?.id === p.film.id ? resolved : p.film;
+  const animeProvider = f.source === "mal" || f.source === "kitsu" || f.source === "jikan";
+  const providerName = f.source === "kitsu" ? "Kitsu" : animeProvider ? "MyAnimeList" : "TMDB";
   const [tab, setTab] = useState("Información"),
     [season, setSeason] = useState(1),
     [episodes, setEpisodes] = useState<any[]>([]),
     [loading, setLoading] = useState(false),
-    [tvdb, setTvdb] = useState<any>(null), [moreEpisodes, setMoreEpisodes] = useState(false);
+    [tvdb, setTvdb] = useState<any>(null), [moreEpisodes, setMoreEpisodes] = useState(false),
+    [related,setRelated] = useState<Film[]>([]);
   useEffect(()=>{setTvdb(null);if(!f.tvdb || f.type !== "tv")return;const ac=new AbortController();fetch(`/api/tvdb?id=${f.tvdb}`,{signal:ac.signal}).then(r=>r.ok?r.json():null).then(d=>{if(!ac.signal.aborted)setTvdb(d);}).catch(()=>{});return ()=>ac.abort();},[f.id,f.tvdb]);
   const item = p.archive.library[f.id];
   useEffect(() => {
@@ -1650,7 +1653,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
     setSeason(1);
     setResolved(null);
     const ac = new AbortController();
-    fetch(p.film.source === "jikan" ? `/api/anime?action=details&id=${p.film.mal}` : `/api/catalog?action=details&type=${p.film.type}&id=${p.film.tmdb}`, {
+    fetch(p.film.source === "kitsu" ? `/api/anime?action=details&source=kitsu&id=${p.film.kitsu}` : p.film.source === "mal" || p.film.source === "jikan" ? `/api/anime?action=details&source=mal&id=${p.film.mal}` : `/api/catalog?action=details&type=${p.film.type}&id=${p.film.tmdb}`, {
       signal: ac.signal,
     })
       .then((r) => r.json())
@@ -1667,7 +1670,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
     if (tab !== "Episodios") return;
     const ac = new AbortController();
     setLoading(true);
-    fetch(f.source === "jikan" ? `/api/anime?action=episodes&id=${f.mal}&page=${season}` : `/api/catalog?action=season&type=tv&id=${f.tmdb}&season=${season}`, {
+    fetch(f.source === "kitsu" ? `/api/anime?action=episodes&source=kitsu&id=${f.kitsu}&page=${season}` : `/api/catalog?action=season&type=tv&id=${f.tmdb}&season=${season}`, {
       signal: ac.signal,
     })
       .then((r) => r.json())
@@ -1684,6 +1687,10 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
       });
     return () => ac.abort();
   }, [f.id, season, tab]);
+  useEffect(()=>{if(tab!=="Similares" || !f.tmdb)return;const ac=new AbortController();fetch(`/api/catalog?action=recommendations&type=${f.type}&id=${f.tmdb}`,{signal:ac.signal}).then(r=>r.ok?r.json() as Promise<{results:Film[]}>:null).then(d=>{if(!ac.signal.aborted&&d?.results){registerFilms(d.results);setRelated(d.results.slice(0,12));}}).catch(()=>{});return()=>ac.abort();},[f.id,f.tmdb,tab]);
+  const markWatched=()=>p.saveItem(f.id,{status:"completed"},"Marcada como terminada");
+  const toggleTop=()=>p.update(a=>({...a,top:a.top.includes(f.id)?a.top.filter(id=>id!==f.id):a.top.length<10?[...a.top,f.id]:a.top}));
+  const share=async()=>{try{await navigator.clipboard.writeText(location.href);p.announce("Enlace copiado");}catch{p.announce("No se pudo copiar el enlace");}};
   return (
     <div className="details-page">
       <div
@@ -1745,7 +1752,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
               <span>
                 <Star size={16} fill="currentColor" />
                 <b>{f.score ? f.score.toFixed(1) : "—"}</b>
-                <small>/ 10 en {f.source === "jikan" ? "MyAnimeList" : "TMDB"}</small>
+                <small>/ 10 en {providerName}</small>
               </span>
               <div className="rating-separator" />
               <span className="film-badge">
@@ -1756,12 +1763,20 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
         </div>
       </div>
       <div className="detail-body">
+        <div className="detail-action-rail" aria-label="Acciones para esta historia">
+          <button onClick={()=>p.saveItem(f.id,{status:"planned"},"Añadida a Por ver")}><Bookmark size={17}/>{item?.status==="planned"?"En Por ver":"Quiero verla"}</button>
+          <button onClick={markWatched}><CheckCircle2 size={17}/>{item?.status==="completed"?"Ya la viste":"Ya la vi"}</button>
+          <button onClick={()=>{if(!p.archive.top.includes(f.id)&&p.archive.top.length>=10){p.announce("Tu Top 10 está completo");return;}toggleTop();p.announce(p.archive.top.includes(f.id)?"Quitada del Top 10":"Añadida a tu Top 10");}}><Star size={17}/>{p.archive.top.includes(f.id)?"En mi Top 10":"Añadir al Top 10"}</button>
+          <button onClick={()=>p.openMemory(f.id)}><PenLine size={17}/>Escribir recuerdo</button>
+          <button onClick={share}><ArrowUpRight size={17}/>Compartir</button>
+        </div>
         <div className="detail-tabs">
           {[
             "Información",
             "Reparto",
-            ...(f.type === "tv" ? ["Episodios"] : []),
+            ...(f.type === "tv" && f.source!=="mal" && f.source!=="jikan" ? ["Episodios"] : []),
             "Similares",
+            "Tráiler",
             "Recuerdos",
           ].map((v) => (
             <button
@@ -1803,7 +1818,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
               </dl>
               {f.episodeCount != null && <p>{f.episodeCount} episodios · {f.airingStatus}</p>}
               {tvdb && <div className="source-facts"><p>TheTVDB · {tvdb.status}{tvdb.network ? ` · ${tvdb.network}` : ""}</p><a className="text-link" href={tvdb.sourceUrl} target="_blank" rel="noreferrer">Ver registro vinculado en TheTVDB <ExternalLink size={14}/></a></div>}
-              <h2>Reparto principal</h2>
+              {f.cast.length>0&&<><h2>Reparto principal</h2>
               <div className="cast-list">
                 {f.cast.map((name, i) => (
                   <div key={name}>
@@ -1818,14 +1833,14 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
                     <small>Reparto principal</small>
                   </div>
                 ))}
-              </div>
+              </div></>}
               <a
                 className="text-link"
                 href={sourceLink(f)}
                 target="_blank"
                 rel="noreferrer"
               >
-                Ver ficha en {f.source === "jikan" ? "MyAnimeList" : "TMDB"} <ExternalLink size={14} />
+                Ver ficha en {providerName} <ExternalLink size={14} />
               </a>
             </div>
             <div className="personal-film-panel">
@@ -1890,6 +1905,12 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
                 <PenLine size={16} />
                 Escribir un recuerdo
               </Button>
+              <label>Guardar en una colección
+                <select value="" onChange={e=>{const collectionId=e.target.value;if(!collectionId)return;p.update(a=>({...a,collections:a.collections.map(c=>c.id===collectionId?{...c,films:c.films.includes(f.id)?c.films:[...c.films,f.id]}:c)}));p.announce("Añadida a tu colección");}}>
+                  <option value="">{p.archive.collections.length?"Elige una colección":"Crea una colección desde Biblioteca"}</option>
+                  {p.archive.collections.map(c=><option key={c.id} value={c.id} disabled={c.films.includes(f.id)}>{c.name}</option>)}
+                </select>
+              </label>
               <div className="where-to-watch">
                 <Globe size={20} />
                 <h4>¿Dónde verla?</h4>
@@ -1898,13 +1919,13 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
                   región.
                 </p>
                 <a
-                  href={f.source === "jikan" ? sourceLink(f) : `https://www.themoviedb.org/${f.type}/${f.tmdb}/watch?locale=${p.archive.settings.country}`}
+                  href={animeProvider ? sourceLink(f) : `https://www.themoviedb.org/${f.type}/${f.tmdb}/watch?locale=${p.archive.settings.country}`}
                   target="_blank"
                   rel="noreferrer"
                 >
                   Consultar plataformas <ArrowUpRight size={15} />
                 </a>
-                <small>{f.source === "jikan" ? "Información de MyAnimeList" : "Disponibilidad por JustWatch / TMDB"}</small>
+                <small>{animeProvider ? `Información de ${providerName}` : "Disponibilidad por JustWatch / TMDB"}</small>
               </div>
             </div>
           </div>
@@ -1912,7 +1933,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
           <>
             <h2>Las personas detrás de la historia</h2>
             <div className="cast-full">
-              {[f.director, ...f.cast].map((n, i) => (
+              {[f.director, ...f.cast].filter(n=>n!=="No disponible"&&n!=="Por confirmar").map((n, i) => (
                 <div key={n}>
                   <div className="cast-avatar large">
                     {n
@@ -1940,15 +1961,17 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
           <FilmRow
             {...p}
             context="similar"
-            ids={films
+            ids={(related.length?related:films
               .filter(
                 (v) =>
                   v.id !== f.id &&
                   (v.genre === f.genre || v.director === f.director),
               )
-              .slice(0, 6)
+              .slice(0, 6))
               .map((v) => v.id)}
           />
+        ) : tab === "Tráiler" ? (
+          <div className="detail-trailer-panel"><h2>Un vistazo a la historia</h2>{f.trailer?<div className="trailer-frame"><iframe src={`https://www.youtube-nocookie.com/embed/${f.trailer}?rel=0`} title={`Tráiler de ${f.title}`} allowFullScreen/></div>:<div className="empty-state"><Play/><p>Esta fuente todavía no ofrece un tráiler para {f.title}.</p><a className="btn" href={sourceLink(f)} target="_blank" rel="noreferrer">Ver ficha oficial <ExternalLink size={14}/></a></div>}</div>
         ) : tab === "Recuerdos" ? (
           <>
             <SectionHeading
@@ -1982,15 +2005,15 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
         ) : (
           <div>
             <div className="episode-toolbar">
-              <h2>{f.source === "jikan" ? "Episodios · página " + season : "Temporadas y episodios"}</h2>
+              <h2>{f.source === "kitsu" ? "Episodios · página " + season : "Temporadas y episodios"}</h2>
               <select
                 value={season}
                 onChange={(e) => setSeason(Number(e.target.value))}
                 aria-label="Temporada"
               >
-                {Array.from({ length: f.source === "jikan" ? Math.max(season + (moreEpisodes ? 1 : 0), Math.ceil((f.episodeCount || 1)/100)) : f.seasons || 1 }, (_, i) => (
+                {Array.from({ length: f.source === "kitsu" ? Math.max(season + (moreEpisodes ? 1 : 0), Math.ceil((f.episodeCount || 1)/20)) : f.seasons || 1 }, (_, i) => (
                   <option value={i + 1} key={i}>
-                    {f.source === "jikan" ? "Página" : "Temporada"} {i + 1}
+                    {f.source === "kitsu" ? "Página" : "Temporada"} {i + 1}
                   </option>
                 ))}
               </select>
@@ -2003,7 +2026,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
             ) : episodes.length ? (
               <div className="episode-list">
                 {episodes.map((e) => {
-                  const code = f.source === "jikan" ? `mal-${e.episode_number}` : `${season}-${e.episode_number}`,
+                  const code = f.source === "kitsu" ? `kitsu-${e.episode_number}` : `${season}-${e.episode_number}`,
                     done = item?.episodes?.includes(code);
                   return (
                     <div key={code}>
@@ -3078,38 +3101,15 @@ function Profile(p: Common) {
           action="Ver todos"
           onAction={() => p.navigate("tops")}
         />
-        <div className="profile-tops-grid">
-          {[
-            {
-              title: "Mi Top Películas",
-              category: "Películas",
-              film: "interstellar",
-            },
-            { title: "Mi Top Series", category: "Series", film: "last-of-us" },
-            { title: "Mi Top Anime", category: "Anime", film: "your-name" },
-            {
-              title: "Mi Top K-Dramas",
-              category: "K-dramas",
-              film: "crash-landing",
-            },
-          ].map((c) => (
-            <button key={c.title} onClick={() => p.navigate("tops")}>
-              <img
-                src={image(getFilm(c.film), "backdrop")}
-                alt=""
-              />
-              <h3>{c.title}</h3>
-              <p>
-                {
-                  p.archive.top.filter(
-                    (id) => getFilm(id).category === c.category,
-                  ).length
-                }{" "}
-                títulos
-              </p>
-            </button>
-          ))}
-        </div>
+        {p.archive.top.length ? <div className="profile-tops-grid">
+          {(["Películas","Series","Anime","K-dramas"] as const).map(category=>{
+            const ranked=p.archive.top.map(getFilm).filter(f=>f.category===category);
+            return ranked.length ? <button key={category} onClick={() => p.navigate("tops")}>
+              <img src={image(ranked[0],"backdrop")} alt="" />
+              <h3>Mi Top {category}</h3><p>{ranked.length} {ranked.length===1?"título":"títulos"}</p>
+            </button> : null;
+          })}
+        </div> : <div className="profile-memory-empty"><Star size={20}/><span>Tu primer top empieza con una historia que te haya marcado.</span><Button onClick={()=>p.navigate("tops")}>Crear un top</Button></div>}
       </section>
       <section className="content-section">
         <SectionHeading
@@ -3226,7 +3226,7 @@ function SettingsOverview(
       value: "Español (Latinoamérica)",
       section: "Idioma",
     },
-    { icon: Monitor, title: "Tema", value: "Oscuro", section: "Apariencia" },
+    { icon: Monitor, title: "Tema", value: p.archive.settings.visualTheme === "storybook" ? "Ilustrado" : "Cine", section: "Apariencia" },
     {
       icon: FilmIcon,
       title: "Reproducción de video",
@@ -3500,14 +3500,10 @@ function SettingsPage(
           {section === "Apariencia" ? (
             <>
               <div className="setting-row">
-                <span>
-                  <b>Tema cinematográfico</b>
-                  <p>Sombras profundas y el color de cada historia.</p>
-                </span>
-                <span className="pill">
-                  <span className="status-dot completed" />
-                  Oscuro
-                </span>
+                <span><b>Estilo visual</b><p>Cine oscuro o un mundo de tonos naturales inspirado en la animación tradicional.</p></span>
+                <select aria-label="Estilo visual" value={p.archive.settings.visualTheme || "cinema"} onChange={e=>p.update(a=>({...a,settings:{...a.settings,visualTheme:e.target.value as "cinema"|"storybook"}}))}>
+                  <option value="cinema">Cinematográfico</option><option value="storybook">Mundo ilustrado</option>
+                </select>
               </div>
               <Toggle
                 label="Animaciones suaves"

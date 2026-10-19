@@ -8,10 +8,10 @@ export async function GET(request: Request) {
     type = u.searchParams.get("type") === "tv" ? "tv" : "movie",
     id = u.searchParams.get("id") || "",
     season = u.searchParams.get("season") || "1";
-  if (!["search", "discover", "details", "season", "videos"].includes(action))
+  if (!["search", "discover", "details", "season", "videos", "recommendations"].includes(action))
     return Response.json({ error: "Consulta no admitida" }, { status: 400 });
   if (
-    ["details", "season", "videos"].includes(action) &&
+    ["details", "season", "videos", "recommendations"].includes(action) &&
     !/^\d{1,10}$/.test(id)
   )
     return Response.json({ error: "Identificador inválido" }, { status: 400 });
@@ -26,6 +26,8 @@ export async function GET(request: Request) {
         ? `discover/${type}`
         : action === "season"
           ? `tv/${id}/season/${season}`
+          : action === "recommendations"
+            ? `${type}/${id}/recommendations`
           : action === "videos"
             ? `${type}/${id}/videos`
             : `${type}/${id}`;
@@ -63,7 +65,7 @@ export async function GET(request: Request) {
     const result =
       action === "details"
         ? { film: fromTMDB(data, type), configured: true }
-        : ["search", "discover"].includes(action)
+        : ["search", "discover", "recommendations"].includes(action)
           ? {
               results: (data.results || [])
                 .flatMap((m: any) =>

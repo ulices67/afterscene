@@ -1811,3 +1811,59 @@ body {
   .hero { height: 470px; }
   .trends .poster-grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 90px) / 6); overflow-x: auto; scrollbar-width: thin; padding-bottom: 10px; }
 }
+
+/* An illustrated, nature-led cinema palette for anime and the optional whole-app theme. */
+.app-shell.anime-world,.app-shell.storybook-theme {
+  --bg:#101a1b;--sidebar:#102021;--panel:#1d3030;--elevated:#29413c;
+  --text:#f5eddb;--muted:#bbcabd;--accent:#efcb86;--line:#d9d7bc24;
+  background:radial-gradient(circle at 81% 7%,#6c9d9140,transparent 31%),linear-gradient(155deg,#14252a,#12201e 49%,#25362c);
+  color:var(--text);
+}
+.anime-world .sidebar,.storybook-theme .sidebar {background:linear-gradient(180deg,#122426,#18312d 55%,#122221);border-right:1px solid #d0d5b525;}
+.anime-world .brand,.storybook-theme .brand {color:#f2dfad;letter-spacing:5.5px;}
+.anime-world .nav-item,.storybook-theme .nav-item {color:#d0d9ca;}
+.anime-world .nav-item.active,.storybook-theme .nav-item.active {background:#d4b97823;color:#f8e8c3;box-shadow:inset 3px 0 #e1bd77;}
+.anime-world .nav-item.active svg,.storybook-theme .nav-item.active svg {color:#f0d08b;}
+.anime-world .topbar,.storybook-theme .topbar {background:#142427d4;border-bottom:1px solid #e4ddb628;backdrop-filter:blur(18px);}
+.anime-world .main,.storybook-theme .main {background:radial-gradient(circle at 95% 22%,#b3b37d13,transparent 35%);}
+.anime-world .page-heading,.storybook-theme .page-heading {border-bottom-color:#d8c68b35;}
+.anime-world .category-heading,.storybook-theme .category-heading {border-radius:0 0 28px 28px;overflow:hidden;}
+.anime-world .category-shade,.storybook-theme .category-shade {background:linear-gradient(90deg,#182c2af2,#19342ab7 48%,#1c332344),linear-gradient(0deg,#172722,#0000);}
+.anime-world .page-heading h1,.storybook-theme .page-heading h1,.anime-world .detail-content h1,.storybook-theme .detail-content h1 {font-family:Georgia,serif;font-weight:400;letter-spacing:-.035em;color:#ffedc6;text-shadow:0 2px 16px #101c18a6;}
+.anime-world .eyebrow,.storybook-theme .eyebrow {color:#e1ce9f;letter-spacing:.16em;}
+.anime-world .catalog-search,.storybook-theme .catalog-search,.anime-world .filter-row select,.storybook-theme .filter-row select {background:#203330;border-color:#d9d1ad3a;color:#f5eddb;}
+.anime-world .chip,.storybook-theme .chip {background:#28413b;color:#d9e1d1;border:1px solid #d7d5af22;border-radius:100px;}
+.anime-world .chip.active,.storybook-theme .chip.active {background:#f0d498;color:#263d32;border-color:#f0d498;}
+.anime-world .poster,.storybook-theme .poster {border-color:#e4d3a640;box-shadow:0 12px 35px #08191666;border-radius:13px;overflow:hidden;}
+.anime-world .poster:hover,.storybook-theme .poster:hover {box-shadow:0 15px 42px #091a16c9,0 0 0 1px #eacc8c;}
+.anime-world .btn,.storybook-theme .btn {background:#355146;border-color:#d3d6af38;color:#fff1d0;border-radius:10px;}
+.anime-world .btn.primary,.storybook-theme .btn.primary {background:#f1d39a;color:#20352d;border-color:#f1d39a;}
+.anime-world .detail-shade,.storybook-theme .detail-shade {background:linear-gradient(90deg,#142824f2 8%,#1a3426b8 53%,#102e2400),linear-gradient(0deg,#14241e,#0000);}
+.anime-world .personal-film-panel,.storybook-theme .personal-film-panel,.anime-world .settings-panel,.storybook-theme .settings-panel {background:#1c302c;border-color:#d6cd9c38;box-shadow:0 20px 55px #06171375;}
+.anime-world .detail-tabs button.active,.storybook-theme .detail-tabs button.active {color:#ffe7ae;}
+.anime-world .detail-tabs button.active:after,.storybook-theme .detail-tabs button.active:after {background:#f0d498;}
+.anime-world .star-rating,.storybook-theme .star-rating {color:#efd38f;}
+.anime-world .footer,.storybook-theme .footer {background:#142721;color:#d0d4be;}
+@media(max-width:760px){.anime-world .category-heading,.storybook-theme .category-heading {border-radius:0 0 20px 20px;}}
+
+.profile-story-slot {display:block;margin:8px 0 13px;color:#c6c9ca;font-size:12px;}
+.profile-story-slot>span {display:block;margin-bottom:7px;}
+.profile-story-value {display:flex;gap:7px;}
+.profile-story-value button {min-height:44px;border:1px solid #ffffff20;border-radius:8px;background:#151c1e;color:#f4f3ed;padding:10px 14px;text-align:left;}
+.profile-story-value button:first-child {flex:1;}
+.profile-story-value button:last-child:not(:first-child) {display:grid;place-items:center;padding:9px;}
+.profile-story-picker {margin-top:10px;padding:13px;background:#0e1618;border:1px solid #ffffff22;border-radius:12px;box-shadow:0 18px 40px #0008;}
+.profile-story-search {display:flex;align-items:center;gap:10px;padding:0 10px;background:#20292b;border:1px solid #ffffff1c;border-radius:8px;}
+.profile-story-search input {width:100%;min-width:0;padding:12px 0;background:transparent;border:0;color:#fff;outline:0;}
+.profile-story-picker .chips {display:flex;gap:6px;flex-wrap:wrap;margin:12px 0;}
+.profile-story-results {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:265px;overflow-y:auto;}
+.profile-story-results button {display:flex;align-items:center;gap:8px;min-width:0;padding:6px;border:1px solid #ffffff12;border-radius:8px;background:#1b2426;color:#f1f1ee;text-align:left;}
+.profile-story-results button:hover,.profile-story-results button:focus-visible {border-color:#e2c88a;}
+.profile-story-results img {width:42px;height:61px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+.profile-story-results span {min-width:0;}.profile-story-results b {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;}.profile-story-results small {display:block;margin-top:5px;font-size:10px;}
+.profile-story-more {margin:12px auto;display:block;}.picker-feedback {font-size:12px;color:#bac4bd;margin:10px 0;}
+.detail-action-rail {display:flex;flex-wrap:wrap;gap:9px;margin:24px 0 28px;padding:16px;border:1px solid #ffffff15;border-radius:14px;background:#ffffff08;}
+.detail-action-rail button {display:flex;align-items:center;gap:8px;padding:11px 13px;border:1px solid #ffffff16;border-radius:9px;color:#eceee9;background:#ffffff0d;font-size:12px;}
+.detail-action-rail button:hover,.detail-action-rail button:focus-visible {background:#ffffff1b;border-color:#d5c48a;}
+.detail-trailer-panel {max-width:900px;margin:auto;}.detail-trailer-panel .trailer-frame {aspect-ratio:16/9;}.detail-trailer-panel iframe {width:100%;height:100%;border:0;}
+@media(max-width:600px){.profile-story-results{grid-template-columns:1fr;}.detail-action-rail{gap:6px;padding:10px;}.detail-action-rail button{flex:1 1 42%;justify-content:center;}}

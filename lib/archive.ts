@@ -32,13 +32,14 @@ export type Archive = {
     motion: boolean;
     country: string;
     autoplay: boolean;
+    visualTheme?: "cinema" | "storybook";
   };
   recent: string[];
 };
 export const seed: Archive = {
   library: {}, top: [], memories: [], collections: [],
   profile: { name: "Mi perfil", bio: "", four: [] },
-  settings: { motion: true, country: "MX", autoplay: false }, recent: [],
+  settings: { motion: true, country: "MX", autoplay: false, visualTheme: "cinema" }, recent: [],
 };
 // v2 starts without the old sample library. v1 remains available for explicit import.
 export const storageKey = "afterscene.archive.v2";
@@ -128,6 +129,7 @@ const archiveSchema = z.object({
     motion: z.boolean(),
     country: z.enum(["MX", "ES", "AR", "CO", "US"]),
     autoplay: z.boolean(),
+    visualTheme: z.enum(["cinema", "storybook"]).optional(),
   }),
   recent: z.array(z.string().max(150)).max(5),
   catalog: z.array(filmSchema).max(2000).optional(),
