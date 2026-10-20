@@ -22,6 +22,7 @@ export default function PeoplePage({ personId, initialQuery, onOpenPerson, onOpe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'Todo' | 'Películas' | 'Series'>('Todo');
+  const [showAllCredits, setShowAllCredits] = useState(false);
   useEffect(() => { setQuery(initialQuery || ''); setPage(1); }, [initialQuery]);
   useEffect(() => { const t = setTimeout(() => setDebounced(query.trim()), 300); return () => clearTimeout(t); }, [query]);
   useEffect(() => {
@@ -61,6 +62,10 @@ export default function PeoplePage({ personId, initialQuery, onOpenPerson, onOpe
         const activeYears = years.length ? `${years[0]} – ${years.at(-1) === new Date().getFullYear() ? 'presente' : years.at(-1)}` : '';
         const highlights = [...person.credits].filter(c => c.poster).sort((a,b) => (b.vote || 0) - (a.vote || 0)).slice(0,3).map(c => c.title).join(', ');
         const photos = [...new Set([person.photo, ...person.images].filter(Boolean))];
+        const filteredCredits = person.credits.filter(c=>filter==='Todo'||(filter==='Películas'?c.type==='movie':c.type==='tv'));
+        const knownFor = [...person.credits].filter(c => c.poster).sort((a,b) => (b.vote || 0) - (a.vote || 0)).slice(0,6);
+        const movieCount = person.credits.filter(c => c.type === 'movie').length;
+        const seriesCount = person.credits.filter(c => c.type === 'tv').length;
         return <>
       <section className="person-hero person-banner page-intro">
         <div className="person-portrait" style={person.photo ? { backgroundImage: `url(${person.photo})` } : undefined}>{person.photo ? <img src={person.photo} alt={`Retrato de ${person.name}`}/> : <UserRound size={60}/>}</div>
@@ -76,8 +81,13 @@ export default function PeoplePage({ personId, initialQuery, onOpenPerson, onOpe
           </div>
           {photos.length > 1 && <div className="person-photos person-hero-gallery" aria-label="Fotografías de TMDB">{photos.slice(0,6).map((src, index) => <img key={src} src={src} alt={index === 0 ? `Retrato de ${person.name}` : `Fotografía de ${person.name}`} loading="lazy"/>)}{photos.length > 6 && <span>+{photos.length - 6}<small>fotos</small></span>}</div>}
       </section>
-      <section className="content-section"><div className="person-section-head"><div><span className="eyebrow">TRAYECTORIA</span><h2>Filmografía</h2><p>{person.credits.length} títulos registrados en TMDB</p></div><div className="chips">{(['Todo','Películas','Series'] as const).map(c=><button className={`chip ${filter===c?'active':''}`} key={c} onClick={()=>setFilter(c)}>{c}</button>)}</div></div>
-        {person.credits.length ? <div className="person-credits">{person.credits.filter(c=>filter==='Todo'||(filter==='Películas'?c.type==='movie':c.type==='tv')).map(c=><button key={`${c.type}-${c.id}`} onClick={()=>openCredit(c)}><div className="person-credit-art">{c.poster?<img src={c.poster} alt="" loading="lazy"/>:<FilmIcon size={24}/>}</div><span><b>{c.title}</b><small>{c.year || 'Año no disponible'} · {c.type==='movie'?'Película':'Serie'}</small>{(c.character||c.job)&&<small>{[c.character,c.job].filter(Boolean).join(" · ")}</small>}</span><ArrowUpRight size={17}/></button>)}</div>:<p className="people-feedback">Esta fuente aún no registra una filmografía.</p>}
+      <section className="content-section person-career"><div className="person-section-head"><div><span className="eyebrow">TRAYECTORIA</span><h2>Filmografía</h2><p>{person.credits.length} títulos registrados en TMDB</p></div><div className="person-credit-controls"><button className="person-view-all" onClick={()=>setShowAllCredits(v=>!v)}>{showAllCredits?'Ver destacados':'Ver toda'} <ArrowUpRight size={14}/></button><div className="chips">{(['Todo','Películas','Series'] as const).map(c=><button className={`chip ${filter===c?'active':''}`} key={c} onClick={()=>{setFilter(c);setShowAllCredits(false);}}>{c}</button>)}</div></div></div>
+        {person.credits.length ? <div className="person-credits">{filteredCredits.slice(0,showAllCredits ? filteredCredits.length : 9).map(c=><button key={`${c.type}-${c.id}`} onClick={()=>openCredit(c)}><div className="person-credit-art">{c.poster?<img src={c.poster} alt="" loading="lazy"/>:<FilmIcon size={24}/>}</div><span><b>{c.title}</b><small>{c.year || 'Año no disponible'} · {c.type==='movie'?'Película':'Serie'}</small>{(c.character||c.job)&&<small>{[c.character,c.job].filter(Boolean).join(" · ")}</small>}</span><ArrowUpRight size={17}/></button>)}</div>:<p className="people-feedback">Esta fuente aún no registra una filmografía.</p>}
+        {!showAllCredits && <div className="person-profile-panels">
+          <section className="person-known"><div className="person-panel-heading"><span className="eyebrow">CONOCIDO POR</span></div><div>{knownFor.map(c=><button key={`known-${c.type}-${c.id}`} onClick={()=>openCredit(c)}><img src={c.poster} alt={`Póster de ${c.title}`} loading="lazy"/><b>{c.title}</b><small>{c.year || ''}</small></button>)}</div></section>
+          <section className="person-gallery-panel"><div className="person-panel-heading"><span className="eyebrow">GALERÍA</span><small>{photos.length} fotos en TMDB</small></div><div>{photos.slice(0,4).map(src=><img key={`gallery-${src}`} src={src} alt={`Fotografía de ${person.name}`} loading="lazy"/>)}</div></section>
+          <section className="person-summary-panel"><div className="person-panel-heading"><span className="eyebrow">TRAYECTORIA EN TMDB</span></div><dl><div><dt>Películas</dt><dd>{movieCount}</dd></div><div><dt>Series</dt><dd>{seriesCount}</dd></div><div><dt>Créditos</dt><dd>{person.credits.length}</dd></div>{activeYears&&<div><dt>Periodo registrado</dt><dd>{activeYears}</dd></div>}</dl></section>
+        </div>}
       </section>
         </>;
       })()}
