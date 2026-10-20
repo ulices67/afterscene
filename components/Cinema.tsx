@@ -58,6 +58,7 @@ import {
   PenLine,
   Menu,
   UserRound,
+  UsersRound,
   Info,
   LoaderCircle,
   Volume2,
@@ -94,6 +95,8 @@ import {
 import ProfileEditor from "@/components/ProfileEditor";
 import AuthPage from "@/components/AuthPage";
 import LocalPlayer from "@/components/LocalPlayer";
+import PeoplePage, { type PersonSummary } from "@/components/PeoplePage";
+import TitleReviews from "@/components/TitleReviews";
 import { useCatalog } from "@/lib/useCatalog";
 
 const nav = [
@@ -103,6 +106,7 @@ const nav = [
   { id: "series", name: "Series", icon: Tv },
   { id: "anime", name: "Anime", icon: Flower2 },
   { id: "kdramas", name: "K-dramas", icon: Heart },
+  { id: "personas", name: "Personas", icon: UsersRound },
 ];
 const personal = [
   { id: "favoritos", name: "Favoritos", icon: Heart },
@@ -226,6 +230,7 @@ export default function Cinema() {
   const [searchOpen, setSearchOpen] = useState(false),
     [query, setQuery] = useState(""),
     [debounced, setDebounced] = useState("");
+  const [peopleResults, setPeopleResults] = useState<PersonSummary[]>([]);
   const [trailer, setTrailer] = useState<Film | null>(null),
     [memoryFilm, setMemoryFilm] = useState<string | null>(null),
     [editMemory, setEditMemory] = useState<Memory | null>(null);
@@ -410,6 +415,14 @@ export default function Cinema() {
     return () => clearTimeout(t);
   }, [query]);
   useEffect(() => {
+    if (!searchOpen || debounced.trim().length < 2) { setPeopleResults([]); return; }
+    const ac = new AbortController();
+    fetch(`/api/people?action=search&q=${encodeURIComponent(debounced.trim())}`, { signal: ac.signal })
+      .then(r => r.ok ? r.json() as Promise<{results:PersonSummary[]}> : null).then(d => { if (!ac.signal.aborted) setPeopleResults((d?.results || []).slice(0, 5)); })
+      .catch(() => {});
+    return () => ac.abort();
+  }, [searchOpen, debounced]);
+  useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
@@ -536,7 +549,7 @@ export default function Cinema() {
   return (
     <MotionConfig reducedMotion={archive.settings.motion ? "user" : "always"}>
       <LayoutGroup>
-        <div className={`app-shell ${(route === "anime" || selected?.category === "Anime") ? "anime-world" : ""} ${archive.settings.visualTheme === "storybook" ? "storybook-theme" : ""}`} data-motion={archive.settings.motion}>
+        <div className={`app-shell ${(route === "anime" || selected?.category === "Anime") ? "anime-world" : ""} ${archive.settings.visualTheme === "storybook" ? "storybook-theme" : archive.settings.visualTheme === "kdrama" ? "kdrama-theme" : ""}`} data-motion={archive.settings.motion}>
           <aside className="sidebar">
             <a className="brand" href="#inicio" aria-label="AFTERSCENE inicio">
               afterscene<span>.</span>
@@ -679,7 +692,12 @@ export default function Cinema() {
               ) ? (
               <Explore {...props} route={route} />
             ) : selected ? (
-              <Details {...props} film={selected} setTrailer={setTrailer} />
+              <Details {...props} film={selected} setTrailer={setTrailer} userId={user?.id} />
+            ) : routeBase === "personas" || routeBase.startsWith("persona/") ? (
+              <PeoplePage key={routeBase.startsWith("persona/") ? routeBase : "personas"}
+                personId={routeBase.startsWith("persona/") ? routeBase.split("/")[1] : undefined}
+                initialQuery={routeBase === "personas" ? new URLSearchParams(route.split("?")[1] || "").get("q") || "" : undefined}
+                onOpenPerson={id => navigate(`persona/${id}`)} onOpenFilm={openFilm} onBack={() => navigate("personas")} />
             ) : route === "biblioteca" || route === "favoritos" ? (
               <LibraryPage
                 key={route}
@@ -844,6 +862,10 @@ export default function Cinema() {
                     <ArrowUpRight size={18} />
                   </button>
                 ))}
+              {peopleResults.length > 0 && <><p className="eyebrow">PERSONAS</p>{peopleResults.map(person => <button className="search-result" key={`person-${person.id}`} onClick={() => navigate(`persona/${person.id}`)}>
+                {person.photo ? <img src={person.photo} alt="" /> : <UserRound size={26} />}
+                <span><b>{person.name}</b><small>{person.knownFor || "Cine y televisión"} · TMDB</small></span><ArrowUpRight size={18}/>
+              </button>)}<button className="text-link" onClick={() => navigate(`personas?q=${encodeURIComponent(query)}`)}>Ver todas las personas <ArrowRight size={15}/></button></>}
               {debounced &&
                 !searchFilms.some(
                   (f) => universal.remote || matches(f, debounced),
@@ -1077,6 +1099,7 @@ function FilmRow({
 function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
   const [hero, setHero] = useState(0),
     [paused, setPaused] = useState(false);
+  const [surprise, setSurprise] = useState<Film | null>(null);
   const trending = useCatalog("", "Tendencias");
   const featured = [films[0], films[1], films[2]];
   const f = featured[hero];
@@ -1226,6 +1249,15 @@ function HomePage(p: Common & { setTrailer: (f: Film) => void }) {
             </IconButton>
           </div>
         </div>
+      </section>
+      <section className="home-discovery content-section" aria-label="Descubrimiento sorpresa">
+        <div><span className="eyebrow">UNA HISTORIA INESPERADA</span><h2>¿Qué vemos hoy?</h2><p>Déjate sorprender por una película o serie del catálogo real.</p></div>
+        {surprise && <button className="discovery-pick" onClick={() => p.openFilm(surprise)}><img src={image(surprise, "poster")} alt=""/><span><b>{surprise.title}</b><small>{surprise.year} · {surprise.category}</small><em>Ver ficha →</em></span></button>}
+        <button className="btn primary discovery-roll" onClick={() => {
+          const choices = (trending.remote || []).filter(item => item.poster && item.id !== surprise?.id);
+          if (choices.length) setSurprise(choices[Math.floor(Math.random() * choices.length)]);
+          else p.navigate("explorar");
+        }}>{surprise ? "Otra sorpresa" : "Sorpréndeme"}</button>
       </section>
       <section className="content-section trends">
         <SectionHeading
@@ -1635,7 +1667,7 @@ function Explore(p: Common & { route: string }) {
   );
 }
 
-function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
+function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId?: string }) {
   const [resolved, setResolved] = useState<Film | null>(null);
   const f = resolved?.id === p.film.id ? resolved : p.film;
   const animeProvider = f.source === "mal" || f.source === "kitsu" || f.source === "jikan";
@@ -1777,6 +1809,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
             ...(f.type === "tv" && f.source!=="mal" && f.source!=="jikan" ? ["Episodios"] : []),
             "Similares",
             "Tráiler",
+            "Reseñas",
             "Recuerdos",
           ].map((v) => (
             <button
@@ -1930,26 +1963,18 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
           <>
             <h2>Las personas detrás de la historia</h2>
             <div className="cast-full">
-              {[f.director, ...f.cast].filter(n=>n!=="No disponible"&&n!=="Por confirmar").map((n, i) => (
-                <div key={n}>
+              {[...(f.director!=="No disponible"&&f.director!=="Por confirmar"?[{name:f.director,role:"Dirección / Creación"}]:[]),...f.cast.map(name=>({name,role:"Reparto principal"}))].map(({name,role}) => (
+                <div key={name}>
                   <div className="cast-avatar large">
-                    {n
+                    {name
                       .split(" ")
                       .map((w) => w[0])
                       .slice(0, 2)
                       .join("")}
                   </div>
-                  <h3>{n}</h3>
-                  <p>
-                    {i === 0 ? "Dirección / Creación" : "Reparto principal"}
-                  </p>
-                  <a
-                    href={`https://www.themoviedb.org/search/person?query=${encodeURIComponent(n)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Ver filmografía <ArrowUpRight size={14} />
-                  </a>
+                  <h3>{name}</h3>
+                  <p>{role}</p>
+                  <button className="text-link" onClick={() => p.navigate(`personas?q=${encodeURIComponent(name)}`)}>Ver filmografía <ArrowUpRight size={14} /></button>
                 </div>
               ))}
             </div>
@@ -1969,6 +1994,10 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void }) {
           />
         ) : tab === "Tráiler" ? (
           <div className="detail-trailer-panel"><h2>Un vistazo a la historia</h2>{f.trailer?<div className="trailer-frame"><iframe src={`https://www.youtube-nocookie.com/embed/${f.trailer}?rel=0`} title={`Tráiler de ${f.title}`} allowFullScreen/></div>:<div className="empty-state"><Play/><p>Esta fuente todavía no ofrece un tráiler para {f.title}.</p><a className="btn" href={sourceLink(f)} target="_blank" rel="noreferrer">Ver ficha oficial <ExternalLink size={14}/></a></div>}</div>
+        ) : tab === "Reseñas" ? (
+          <TitleReviews filmId={f.id} filmTitle={f.title} userId={p.userId} displayName={p.archive.profile.name}
+            personalRating={item?.rating} onLogin={() => p.navigate("login")}
+            onRated={rating => p.saveItem(f.id, { rating }, "Reseña publicada y nota guardada")} />
         ) : tab === "Recuerdos" ? (
           <>
             <SectionHeading
@@ -3160,6 +3189,7 @@ function Profile(p: Common) {
         open={editing}
         onClose={() => setEditing(false)}
         title="Editar perfil"
+        wide
       >
         <ProfileEditor profile={p.archive.profile} onSave={profile => {p.update(a=>({...a,profile}));setEditing(false);p.announce("Perfil actualizado");}}/>
 
@@ -3223,7 +3253,7 @@ function SettingsOverview(
       value: "Español (Latinoamérica)",
       section: "Idioma",
     },
-    { icon: Monitor, title: "Tema", value: p.archive.settings.visualTheme === "storybook" ? "Ilustrado" : "Cine", section: "Apariencia" },
+    { icon: Monitor, title: "Tema", value: p.archive.settings.visualTheme === "storybook" ? "Bosque animado" : p.archive.settings.visualTheme === "kdrama" ? "K-drama" : "Cine nocturno", section: "Apariencia" },
     {
       icon: FilmIcon,
       title: "Reproducción de video",
@@ -3496,12 +3526,8 @@ function SettingsPage(
           <h2>{section}</h2>
           {section === "Apariencia" ? (
             <>
-              <div className="setting-row">
-                <span><b>Estilo visual</b><p>Cine oscuro o un mundo de tonos naturales inspirado en la animación tradicional.</p></span>
-                <select aria-label="Estilo visual" value={p.archive.settings.visualTheme || "cinema"} onChange={e=>p.update(a=>({...a,settings:{...a.settings,visualTheme:e.target.value as "cinema"|"storybook"}}))}>
-                  <option value="cinema">Cinematográfico</option><option value="storybook">Mundo ilustrado</option>
-                </select>
-              </div>
+              <div className="setting-theme-group"><div><b>Elige tu ambiente</b><p>El tema cambia colores, texturas, tarjetas y movimiento en toda la app.</p></div><div className="theme-cards" role="radiogroup" aria-label="Estilo visual">
+                {([{id:"cinema",title:"Cine nocturno",subtitle:"Negro, luz de proyector y contrastes",symbol:"✦"},{id:"storybook",title:"Bosque animado",subtitle:"Acuarela, verde musgo y cielo cálido",symbol:"✿"},{id:"kdrama",title:"K-drama",subtitle:"Pétalos, lavanda y romance",symbol:"❀"}] as const).map(t=><button type="button" role="radio" aria-checked={(p.archive.settings.visualTheme||"cinema")===t.id} className={`theme-card theme-card-${t.id} ${(p.archive.settings.visualTheme||"cinema")===t.id?"selected":""}`} key={t.id} onClick={()=>p.update(a=>({...a,settings:{...a.settings,visualTheme:t.id}}))}><span className="theme-symbol">{t.symbol}</span><b>{t.title}</b><small>{t.subtitle}</small><span className="theme-check">{(p.archive.settings.visualTheme||"cinema")===t.id?"✓":""}</span></button>)}</div></div>
               <Toggle
                 label="Animaciones suaves"
                 description="Transiciones de páginas, imágenes y microinteracciones."

@@ -32,7 +32,7 @@ export type Archive = {
     motion: boolean;
     country: string;
     autoplay: boolean;
-    visualTheme?: "cinema" | "storybook";
+    visualTheme?: "cinema" | "storybook" | "kdrama";
   };
   recent: string[];
 };
@@ -129,7 +129,7 @@ const archiveSchema = z.object({
     motion: z.boolean(),
     country: z.enum(["MX", "ES", "AR", "CO", "US"]),
     autoplay: z.boolean(),
-    visualTheme: z.enum(["cinema", "storybook"]).optional(),
+    visualTheme: z.enum(["cinema", "storybook", "kdrama"]).optional(),
   }),
   recent: z.array(z.string().max(150)).max(5),
   catalog: z.array(filmSchema).max(2000).optional(),

@@ -29,6 +29,7 @@ export default function AuthPage({enabled,onBack,announce}:{enabled:boolean;onBa
         {error&&<p className="form-error" role="alert">{error}</p>}{message&&<p className="auth-feedback" role="status">{message}</p>}
         <button type="submit" className="auth-primary" disabled={busy||!enabled}>{busy?<LoaderCircle className="spin" size={17}/>:null}{mode==='signup'?'Crear mi cuenta':mode==='forgot'?'Enviar enlace':mode==='reset'?'Actualizar contraseña':'Entrar a AFTERSCENE'}<ArrowRight size={16}/></button>
       </form>
+      {['login','signup'].includes(mode)&&<div className="auth-social"><div className="auth-divider"><span/>o continúa con<span/></div><button type="button" disabled={busy||!enabled} onClick={async()=>{setBusy(true);setError('');try{const c=await getSupabase();if(!c)throw Error('El acceso no está disponible.');const {error}=await c.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/'}});if(error)throw error;}catch(e){setError((e as Error).message);setBusy(false);}}}><span className="google-g" aria-hidden="true">G</span>Continuar con Google</button></div>}
       {['forgot','reset'].includes(mode)&&<button className="auth-return" onClick={()=>{setMode('login');setError('');setMessage('');}}><ArrowLeft size={14}/>Volver a iniciar sesión</button>}
       {!enabled&&<p className="auth-feedback">Conectando con el servicio de cuentas…</p>}
       <div className="auth-note"><Lock size={14}/><p>Tus favoritos, listas y recuerdos pertenecen a tu cuenta. Tú decides qué guardar.</p></div>
