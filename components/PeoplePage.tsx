@@ -57,7 +57,7 @@ export default function PeoplePage({ personId, initialQuery, onOpenPerson, onOpe
     {error && <p className="people-feedback" role="alert">{error}</p>}
     {person && <>
       <section className="person-hero person-banner page-intro">
-        <div className="person-portrait">{person.photo ? <img src={person.photo} alt={`Retrato de ${person.name}`}/> : <UserRound size={60}/>}</div>
+        <div className="person-portrait" style={person.photo ? { backgroundImage: `url(${person.photo})` } : undefined}>{person.photo ? <img src={person.photo} alt={`Retrato de ${person.name}`}/> : <UserRound size={60}/>}</div>
         <div className="person-banner-copy"><span className="eyebrow">PERSONA · {person.department || 'CINE Y TELEVISIÓN'}</span><h1>{person.name}</h1>
           {(person.placeOfBirth || person.birthday) && <p className="person-meta">{[person.placeOfBirth, person.birthday].filter(Boolean).join(' · ')}</p>}
           <details className="person-biography" open><summary>Biografía</summary><p className="person-bio">{person.biography || 'TMDB todavía no ofrece una biografía en español para esta persona.'}</p></details>
