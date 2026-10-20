@@ -1,4 +1,5 @@
 "use client";
+import ReviewReplies from "@/components/ReviewReplies";
 import { useCallback, useEffect, useState } from 'react';
 import { LoaderCircle, MessageSquareText, Star, Trash2 } from 'lucide-react';
 import { getSupabase } from '@/lib/archive';
@@ -82,7 +83,7 @@ export default function TitleReviews({ filmId, filmTitle, userId, displayName, p
     {error && <p className="review-error" role="alert">{error}</p>}
     {loading && <p className="people-feedback"><LoaderCircle className="spin"/>Cargando reseñas…</p>}
     {!loading && !reviews.length && !error && <div className="empty-state"><MessageSquareText/><h3>Esta conversación está por comenzar.</h3><p>Sé la primera persona en dejar una reseña de {filmTitle}.</p></div>}
-    <div className="review-list">{reviews.map(review => <article key={review.id}><div className="review-avatar">{review.display_name.slice(0, 1).toUpperCase()}</div><div><div className="review-byline"><b>{review.display_name}</b><span><Star size={13} fill="currentColor"/> {review.rating}/10</span><time dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString('es-MX')}</time></div>{review.body && <p>{review.body}</p>}</div></article>)}</div>
+    <div className="review-list">{reviews.map(review => <article key={review.id}><div className="review-avatar">{review.display_name.slice(0, 1).toUpperCase()}</div><div><div className="review-byline"><b>{review.display_name}</b><span><Star size={13} fill="currentColor"/> {review.rating}/10</span><time dateTime={review.created_at}>{new Date(review.created_at).toLocaleDateString('es-MX')}</time></div>{review.body && <p>{review.body}</p>}<ReviewReplies reviewId={review.id} userId={userId} displayName={displayName} onLogin={onLogin}/></div></article>)}</div>
     {reviews.length < count && <button className="btn people-more" onClick={() => void load(page + 1, sort)}>Leer más reseñas</button>}
   </section>;
 }

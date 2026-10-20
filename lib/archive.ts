@@ -6,6 +6,9 @@ export type LibraryItem = {
   rating?: number;
   added: string;
   episodes?: string[];
+  updatedAt?: string;
+  completedAt?: string;
+  reminder?: string;
 };
 export type Memory = {
   id: string;
@@ -20,19 +23,24 @@ export type Memory = {
 };
 export type Collection = { id: string; name: string; films: string[] };
 export type Archive = {
+  activity?: { id: string; film: string; action: string; date: string }[];
+  watchTime?: Record<string, number>;
+  providerHistory?: Record<string,string[]>;
+  availabilityChanges?: { film:string; date:string; country:string }[];
   progress?: Record<string, number>;
   catalog?: import("./catalog").Film[];
   library: Record<string, LibraryItem>;
   top: string[];
   memories: Memory[];
   collections: Collection[];
-  profile: { name: string; bio: string; four: string[]; avatar?: string; banner?: string; background?: string; accent?: string; location?: string; handle?: string };
+  profile: { name: string; bio: string; four: string[]; avatar?: string; banner?: string; background?: string; accent?: string; location?: string; handle?: string; genres?: string[] };
   settings: {
     notifications?: boolean;
     motion: boolean;
     country: string;
     autoplay: boolean;
     visualTheme?: "cinema" | "storybook" | "kdrama";
+    density?: "gallery" | "compact";
   };
   recent: string[];
 };
@@ -85,6 +93,9 @@ const archiveSchema = z.object({
       rating: z.number().min(0).max(10).optional(),
       added: date,
       episodes: z.array(z.string().max(20)).max(10000).optional(),
+      updatedAt: z.string().datetime().optional(),
+      completedAt: z.string().datetime().optional(),
+      reminder: z.string().max(10).optional(),
     }),
   ),
   top: z.array(id).max(10).refine(unique),
@@ -124,16 +135,23 @@ const archiveSchema = z.object({
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     location: z.string().max(80).optional(),
     handle: z.string().max(30).regex(/^[a-zA-Z0-9_.-]*$/).optional(),
+    genres: z.array(z.string().max(40)).max(15).optional(),
   }),
   settings: z.object({
     motion: z.boolean(),
     country: z.enum(["MX", "ES", "AR", "CO", "US"]),
     autoplay: z.boolean(),
     visualTheme: z.enum(["cinema", "storybook", "kdrama"]).optional(),
+    notifications: z.boolean().optional(),
+    density: z.enum(["gallery", "compact"]).optional(),
   }),
   recent: z.array(z.string().max(150)).max(5),
   catalog: z.array(filmSchema).max(2000).optional(),
   progress: z.record(z.number().min(0)).optional(),
+  watchTime: z.record(date, z.number().min(0)).optional(),
+  providerHistory: z.record(z.array(z.string().max(200))).optional(),
+  availabilityChanges: z.array(z.object({film:id,date:z.string().datetime(),country:z.string().max(3)})).max(50).optional(),
+  activity: z.array(z.object({ id: z.string().max(100), film: id, action: z.string().max(100), date: z.string().datetime() })).max(2000).optional(),
 });
 export function isArchive(value: unknown): value is Archive {
   return archiveSchema.safeParse(value).success;

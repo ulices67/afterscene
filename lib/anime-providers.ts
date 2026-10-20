@@ -15,6 +15,7 @@ export function fromMAL(node: any): Film {
     score: Number(m.mean) || 0, director: 'No disponible', country: 'No disponible',
     synopsis: text(m.synopsis, 'Sin sinopsis disponible.'),
     poster: m.main_picture?.large || m.main_picture?.medium || '',
+    studio: m.studios?.map((s: any)=>s.name).join(' · ') || undefined,
     cast: [], episodeCount: m.num_episodes || undefined,
     airingStatus: m.status || undefined, sourceUrl: `https://myanimelist.net/anime/${m.id}`,
     color: '#5e8073', retrievedAt: new Date().toISOString(),

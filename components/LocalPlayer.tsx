@@ -4,9 +4,11 @@ import { Film, Upload, Play, Lock, X } from "lucide-react";
 export default function LocalPlayer({
   progress,
   onProgress,
+  onWatchedSeconds,
 }: {
   progress: Record<string, number>;
   onProgress: (id: string, time: number) => void;
+  onWatchedSeconds?: (seconds: number) => void;
 }) {
   const [source, setSource] = useState<{
       url: string;
@@ -18,6 +20,19 @@ export default function LocalPlayer({
   const input = useRef<HTMLInputElement>(null),
     video = useRef<HTMLVideoElement>(null),
     lastSaved = useRef(0);
+  const report = useRef(onWatchedSeconds);
+  report.current = onWatchedSeconds;
+  useEffect(() => {
+    let seconds = 0, previous = performance.now();
+    const timer = setInterval(() => {
+      const now = performance.now(), elapsed = (now - previous) / 1000;
+      previous = now;
+      const v = video.current;
+      if (v && !v.paused && !v.ended && !v.seeking && v.readyState >= 3 && elapsed < 3) seconds += elapsed;
+      if (seconds >= 10) { report.current?.(seconds); seconds = 0; }
+    }, 1000);
+    return () => { clearInterval(timer); if (seconds > 0) report.current?.(seconds); };
+  }, [source?.id]);
   useEffect(
     () => () => {
       if (source) URL.revokeObjectURL(source.url);

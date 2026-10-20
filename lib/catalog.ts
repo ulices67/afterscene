@@ -26,6 +26,12 @@ export type Film = {
   backdrop?: string;
   trailer?: string;
   cast: string[];
+  characters?: {id:string;name:string;photo:string;description:string}[];
+  castMembers?: { id: number; name: string; photo: string; role: string }[];
+  crewMembers?: { id: number; name: string; photo: string; role: string }[];
+  nextEpisode?: { name: string; date: string; season: number; number: number };
+  releaseDate?: string;
+  watchProviders?: Record<string, string[]>;
   seasons?: number;
   studio?: string;
   color: string;
@@ -115,6 +121,17 @@ export function fromTMDB(m: any, typeHint: "movie" | "tv" = "movie"): Film {
       m.credits?.cast?.slice(0, 8).map((c: any) => c.name) ||
       existing?.cast ||
       [],
+    castMembers: m.credits?.cast?.slice(0, 40).map((c: any) => ({
+      id: c.id, name: c.name, role: c.character || "Interpretación",
+      photo: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : "",
+    })),
+    crewMembers: m.credits?.crew?.filter((c: any) => ["Director", "Writer", "Screenplay", "Creator"].includes(c.job)).map((c: any) => ({
+      id: c.id, name: c.name, role: c.job,
+      photo: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : "",
+    })),
+    nextEpisode: m.next_episode_to_air ? { name: m.next_episode_to_air.name, date: m.next_episode_to_air.air_date, season: m.next_episode_to_air.season_number, number: m.next_episode_to_air.episode_number } : undefined,
+    releaseDate: m.release_date || m.first_air_date || undefined,
+    watchProviders: m["watch/providers"]?.results ? Object.fromEntries(Object.entries(m["watch/providers"].results).map(([country, value]: [string, any]) => [country, [...new Set(["flatrate","free","ads","rent","buy"].flatMap(kind => (value[kind] || []).map((v: any) => `${v.provider_name} (${kind})`)))].sort()])) as Record<string,string[]> : undefined,
     seasons: m.number_of_seasons,
     studio: m.production_companies?.[0]?.name,
     color: existing?.color || "#455e63",

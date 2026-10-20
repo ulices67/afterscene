@@ -96,6 +96,12 @@ import ProfileEditor from "@/components/ProfileEditor";
 import AuthPage from "@/components/AuthPage";
 import LocalPlayer from "@/components/LocalPlayer";
 import PeoplePage, { type PersonSummary } from "@/components/PeoplePage";
+import SocialNotifications from "@/components/SocialNotifications";
+import Community, { PublishProfile } from "@/components/Community";
+import ReleaseCalendar from "@/components/ReleaseCalendar";
+import CinematicMotion from "@/components/CinematicMotion";
+import ActivityDashboard from "@/components/ActivityDashboard";
+import CastCards from "@/components/CastCards";
 import TitleReviews from "@/components/TitleReviews";
 import { useCatalog } from "@/lib/useCatalog";
 
@@ -107,12 +113,15 @@ const nav = [
   { id: "anime", name: "Anime", icon: Flower2 },
   { id: "kdramas", name: "K-dramas", icon: Heart },
   { id: "personas", name: "Personas", icon: UsersRound },
+  { id: "comunidad", name: "Comunidad", icon: UsersRound },
+  { id: "calendario", name: "Calendario", icon: CalendarDays },
 ];
 const personal = [
   { id: "favoritos", name: "Favoritos", icon: Heart },
   { id: "biblioteca", name: "Mi biblioteca", icon: Library },
   { id: "tops", name: "Mis tops", icon: ChartNoAxesColumn },
   { id: "recuerdos", name: "Recuerdos", icon: BookOpen },
+  { id: "actividad", name: "Mi actividad", icon: ChartNoAxesColumn },
 ];
 const cats = ["Todo", "Películas", "Series", "Anime", "K-dramas"];
 const today = () =>
@@ -460,22 +469,33 @@ export default function Cinema() {
     patch: Partial<LibraryItem>,
     message?: string,
   ) => {
+    const timestamp = new Date().toISOString();
+    const action = patch.episodes ? "Progreso de episodios actualizado" : patch.status ? `Estado: ${statuses[patch.status] || patch.status}` : patch.rating !== undefined ? `Calificación: ${patch.rating}/10` : patch.reminder ? "Recordatorio programado" : patch.favorite !== undefined ? (patch.favorite ? "Añadida a favoritos" : "Retirada de favoritos") : "Biblioteca actualizada";
+    const eventId = crypto.randomUUID();
     update((a) => ({
       ...a,
       catalog: [...(a.catalog || []).filter(f=>f.id!==id), getFilm(id)],
+      activity: [{id:eventId,film:id,action,date:timestamp},...(a.activity || [])].slice(0,2000),
       library: {
         ...a.library,
         [id]: {
-          ...(a.library[id] || {
-            status: "planned",
-            favorite: false,
-            added: today(),
-          }),
-          ...patch,
+          ...(a.library[id] || {status: "planned", favorite: false, added: today()}),
+          ...patch, updatedAt: timestamp,
+          completedAt: patch.status === "completed" ? a.library[id]?.completedAt || timestamp : patch.status ? undefined : a.library[id]?.completedAt,
         },
       },
     }));
     if (message) announce(message);
+  };
+  const checkAvailability = (checked: Film[]) => {
+    if(!checked.length)return;
+    update(a=>{
+      const providerHistory={...a.providerHistory}, changes=[...(a.availabilityChanges||[])];let changed=false;
+      for(const film of checked){if(!film.watchProviders)continue;const key=`${a.settings.country}:${film.id}`, next=film.watchProviders[a.settings.country]||[],previous=providerHistory[key];
+        if(JSON.stringify(previous)!==JSON.stringify(next)){changed=true;if(previous)changes.unshift({film:film.id,country:a.settings.country,date:new Date().toISOString()});providerHistory[key]=next;}
+      }
+      return changed?{...a,providerHistory,availabilityChanges:changes.slice(0,50)}:a;
+    });
   };
   const toggleFavorite = (id: string) => {
     const favorite = !archive.library[id]?.favorite;
@@ -516,7 +536,7 @@ export default function Cinema() {
   const universal = useCatalog(searchOpen ? debounced : "__disabled__");
   const searchFilms = universal.remote || films;
   const selected = route.startsWith("titulo/")
-    ? getFilm(route.split("/")[2])
+    ? films.find(f => f.id === route.split("/")[2]) || null
     : null;
   const routeBase = route.split("?")[0];
   const currentLabel = selected
@@ -549,7 +569,7 @@ export default function Cinema() {
   return (
     <MotionConfig reducedMotion={archive.settings.motion ? "user" : "always"}>
       <LayoutGroup>
-        <div className={`app-shell ${(route === "anime" || selected?.category === "Anime") ? "anime-world" : ""} ${archive.settings.visualTheme === "storybook" ? "storybook-theme" : archive.settings.visualTheme === "kdrama" ? "kdrama-theme" : ""}`} data-motion={archive.settings.motion}>
+        <div className={`app-shell ${(route === "anime" || selected?.category === "Anime") ? "anime-world" : ""} ${archive.settings.visualTheme === "storybook" ? "storybook-theme" : (archive.settings.visualTheme === "kdrama" || route === "kdramas" || selected?.category === "K-dramas") ? "kdrama-theme" : ""}`} data-density={archive.settings.density || "gallery"} data-motion={archive.settings.motion}>
           <aside className="sidebar">
             <a className="brand" href="#inicio" aria-label="AFTERSCENE inicio">
               afterscene<span>.</span>
@@ -628,6 +648,7 @@ export default function Cinema() {
             </div>
           </aside>
           <main className="main" ref={content}>
+            <CinematicMotion scope={content} enabled={archive.settings.motion} route={route}/>
             <header className="topbar">
               <div className="breadcrumb">
                 <span>Tu universo</span>
@@ -652,7 +673,7 @@ export default function Cinema() {
                   onClick={() => setNotifications((v) => !v)}
                 >
                   <Bell size={18} />
-                  {archive.settings.notifications !== false && (
+                  {archive.settings.notifications !== false && ((archive.availabilityChanges?.length||0)>0 || Object.values(archive.library).some(v=>v.reminder && v.reminder<=today())) && (
                     <i className="notification-dot" />
                   )}
                 </IconButton>
@@ -666,21 +687,9 @@ export default function Cinema() {
               </div>
               {notifications && (
                 <div className="notification-panel">
-                  <b>Tu pequeño rincón de cine</b>
-                  <p>
-                    Tu biblioteca y tus recuerdos están{" "}
-                    {user
-                      ? "sincronizados con tu cuenta."
-                      : "guardados en este navegador."}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setNotifications(false);
-                      navigate("recuerdos");
-                    }}
-                  >
-                    Escribir un recuerdo <ArrowRight size={15} />
-                  </button>
+                  <SocialNotifications userId={user?.id} navigate={r=>{setNotifications(false);navigate(r);}}/>
+                  <ReleaseCalendar onCheck={checkAvailability} archive={archive} compact openFilm={f=>{setNotifications(false);openFilm(f);}}/>
+                  <button onClick={()=>{setNotifications(false);navigate("calendario");}}>Abrir calendario <ArrowRight size={15}/></button>
                 </div>
               )}
             </header>
@@ -693,6 +702,8 @@ export default function Cinema() {
               <Explore {...props} route={route} />
             ) : selected ? (
               <Details {...props} film={selected} setTrailer={setTrailer} userId={user?.id} />
+            ) : routeBase.startsWith("titulo/") ? (
+              <RemoteTitle {...props} route={routeBase} setTrailer={setTrailer} userId={user?.id}/>
             ) : routeBase === "personas" || routeBase.startsWith("persona/") ? (
               <PeoplePage key={routeBase.startsWith("persona/") ? routeBase : "personas"}
                 personId={routeBase.startsWith("persona/") ? routeBase.split("/")[1] : undefined}
@@ -714,8 +725,14 @@ export default function Cinema() {
                   setMemoryFilm(m.film);
                 }}
               />
+            ) : route === "comunidad" || routeBase.startsWith("usuario/") ? (
+              <Community profileId={routeBase.startsWith("usuario/")?routeBase.split("/")[1]:undefined} userId={user?.id} navigate={navigate}/>
+            ) : route === "calendario" ? (
+              <ReleaseCalendar onCheck={checkAvailability} archive={archive} openFilm={openFilm}/>
+            ) : route === "actividad" ? (
+              <div className="standard-page page-intro"><ActivityDashboard archive={archive} openFilm={openFilm}/></div>
             ) : route === "perfil" ? (
-              <Profile {...props} />
+              <Profile {...props} userId={user?.id} />
             ) : route === "configuracion" ? (
               <SettingsPage
                 {...props}
@@ -1667,6 +1684,20 @@ function Explore(p: Common & { route: string }) {
   );
 }
 
+function RemoteTitle(p: Common & {route:string;setTrailer:(f:Film)=>void;userId?:string}) {
+  const [film,setFilm]=useState<Film|null>(null),[error,setError]=useState("");
+  useEffect(()=>{
+    const ac=new AbortController();setFilm(null);setError("");
+    const [,type,id]=p.route.split("/");
+    const match=/^(movie|tv|mal|kitsu)-(\d+)$/.exec(id||"");
+    if(!match||!["movie","tv"].includes(type)){setError("Este título no está disponible en el catálogo.");return;}
+    const url=match[1]==="mal"||match[1]==="kitsu"?`/api/anime?action=details&source=${match[1]}&id=${match[2]}`:`/api/catalog?action=details&type=${type}&id=${match[2]}`;
+    fetch(url,{signal:ac.signal}).then(async r=>{if(!r.ok)throw Error();return await r.json() as {film:Film};}).then(d=>{if(!ac.signal.aborted&&d.film){registerFilms([d.film]);setFilm(d.film);}}).catch(()=>{if(!ac.signal.aborted)setError("No pudimos cargar este título. Vuelve a intentarlo desde Explorar.");});
+    return()=>ac.abort();
+  },[p.route]);
+  return film?<Details {...p} film={film}/>:<div className="standard-page"><p role="status">{error||"Cargando la ficha del catálogo…"}</p>{error&&<Button onClick={()=>p.navigate("explorar")}>Explorar catálogo</Button>}</div>;
+}
+
 function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId?: string }) {
   const [resolved, setResolved] = useState<Film | null>(null);
   const f = resolved?.id === p.film.id ? resolved : p.film;
@@ -1700,6 +1731,11 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
   }, [p.film.id]);
   useEffect(() => {
     if (tab !== "Episodios") return;
+    if(f.source === "mal") {
+      const count=f.episodeCount||0, start=(season-1)*20;
+      setEpisodes(Array.from({length:Math.max(0,Math.min(20,count-start))},(_,i)=>({episode_number:start+i+1,name:`Episodio ${start+i+1}`,overview:"Seguimiento por número; esta fuente no proporciona una sinopsis del episodio."})));
+      setMoreEpisodes(start+20<count);setLoading(false);return;
+    }
     const ac = new AbortController();
     setLoading(true);
     fetch(f.source === "kitsu" ? `/api/anime?action=episodes&source=kitsu&id=${f.kitsu}&page=${season}` : `/api/catalog?action=season&type=tv&id=${f.tmdb}&season=${season}`, {
@@ -1806,7 +1842,8 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
           {[
             "Información",
             ...(f.cast.length || f.director !== "No disponible" ? ["Reparto"] : []),
-            ...(f.type === "tv" && f.source!=="mal" && f.source!=="jikan" ? ["Episodios"] : []),
+            ...(f.type === "tv" && f.source!=="jikan" ? ["Episodios"] : []),
+            ...(f.characters?.length ? ["Personajes"] : []),
             "Similares",
             "Tráiler",
             "Reseñas",
@@ -1852,21 +1889,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
               {f.episodeCount != null && <p>{f.episodeCount} episodios · {f.airingStatus}</p>}
               {tvdb && <div className="source-facts"><p>TheTVDB · {tvdb.status}{tvdb.network ? ` · ${tvdb.network}` : ""}</p><a className="text-link" href={tvdb.sourceUrl} target="_blank" rel="noreferrer">Ver registro vinculado en TheTVDB <ExternalLink size={14}/></a></div>}
               {f.cast.length>0&&<><h2>Reparto principal</h2>
-              <div className="cast-list">
-                {f.cast.map((name, i) => (
-                  <div key={name}>
-                    <span className="cast-avatar">
-                      {name
-                        .split(" ")
-                        .map((w) => w[0])
-                        .slice(0, 2)
-                        .join("")}
-                    </span>
-                    <b>{name}</b>
-                    <small>Reparto principal</small>
-                  </div>
-                ))}
-              </div></>}
+              <CastCards film={f} navigate={p.navigate}/></>}
               <a
                 className="text-link"
                 href={sourceLink(f)}
@@ -1944,6 +1967,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
                   {p.archive.collections.map(c=><option key={c.id} value={c.id} disabled={c.films.includes(f.id)}>{c.name}</option>)}
                 </select>
               </label>
+              <label>Recordarme esta historia<input aria-label="Fecha de recordatorio" type="date" value={item?.reminder||""} onChange={e=>p.saveItem(f.id,{reminder:e.target.value},e.target.value?"Recordatorio guardado":"Recordatorio eliminado")}/></label>
               <div className="where-to-watch">
                 <Globe size={20} />
                 <h4>¿Dónde verla?</h4>
@@ -1959,25 +1983,12 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
               </div>
             </div>
           </div>
+        ) : tab === "Personajes" ? (
+          <><h2>Personajes de esta historia</h2><div className="character-grid">{f.characters?.map(c=><article key={c.id}>{c.photo&&<img src={c.photo} alt={c.name} loading="lazy"/>}<h3>{c.name}</h3><details><summary>Descripción · puede contener spoilers</summary><p>{c.description||"La fuente no incluye una descripción."}</p></details></article>)}</div><small>Personajes e imágenes de Kitsu.</small></>
         ) : tab === "Reparto" ? (
           <>
             <h2>Las personas detrás de la historia</h2>
-            <div className="cast-full">
-              {[...(f.director!=="No disponible"&&f.director!=="Por confirmar"?[{name:f.director,role:"Dirección / Creación"}]:[]),...f.cast.map(name=>({name,role:"Reparto principal"}))].map(({name,role}) => (
-                <div key={name}>
-                  <div className="cast-avatar large">
-                    {name
-                      .split(" ")
-                      .map((w) => w[0])
-                      .slice(0, 2)
-                      .join("")}
-                  </div>
-                  <h3>{name}</h3>
-                  <p>{role}</p>
-                  <button className="text-link" onClick={() => p.navigate(`personas?q=${encodeURIComponent(name)}`)}>Ver filmografía <ArrowUpRight size={14} /></button>
-                </div>
-              ))}
-            </div>
+            <CastCards film={f} full navigate={p.navigate}/>
           </>
         ) : tab === "Similares" ? (
           <FilmRow
@@ -2031,15 +2042,15 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
         ) : (
           <div>
             <div className="episode-toolbar">
-              <h2>{f.source === "kitsu" ? "Episodios · página " + season : "Temporadas y episodios"}</h2>
+              <h2>{(f.source === "kitsu" || f.source === "mal") ? "Episodios · página " + season : "Temporadas y episodios"}</h2>
               <select
                 value={season}
                 onChange={(e) => setSeason(Number(e.target.value))}
                 aria-label="Temporada"
               >
-                {Array.from({ length: f.source === "kitsu" ? Math.max(season + (moreEpisodes ? 1 : 0), Math.ceil((f.episodeCount || 1)/20)) : f.seasons || 1 }, (_, i) => (
+                {Array.from({ length: (f.source === "kitsu" || f.source === "mal") ? Math.max(season + (moreEpisodes ? 1 : 0), Math.ceil((f.episodeCount || 1)/20)) : f.seasons || 1 }, (_, i) => (
                   <option value={i + 1} key={i}>
-                    {f.source === "kitsu" ? "Página" : "Temporada"} {i + 1}
+                    {(f.source === "kitsu" || f.source === "mal") ? "Página" : "Temporada"} {i + 1}
                   </option>
                 ))}
               </select>
@@ -2052,7 +2063,7 @@ function Details(p: Common & { film: Film; setTrailer: (f: Film) => void; userId
             ) : episodes.length ? (
               <div className="episode-list">
                 {episodes.map((e) => {
-                  const code = f.source === "kitsu" ? `kitsu-${e.episode_number}` : `${season}-${e.episode_number}`,
+                  const code = (f.source === "kitsu" || f.source === "mal") ? `${f.source}-${e.episode_number}` : `${season}-${e.episode_number}`,
                     done = item?.episodes?.includes(code);
                   return (
                     <div key={code}>
@@ -3052,7 +3063,7 @@ function MemoryEditor({
   );
 }
 
-function Profile(p: Common) {
+function Profile(p: Common & {userId?:string}) {
   const [editing, setEditing] = useState(false);
   const items = Object.entries(p.archive.library),
     favorites = films.filter((f) => p.archive.library[f.id]?.favorite);
@@ -3093,6 +3104,9 @@ function Profile(p: Common) {
           <Button onClick={startEdit}>Editar perfil</Button>
         </div>
       </section>
+      <button className="btn" onClick={()=>p.navigate("actividad")}><ChartNoAxesColumn size={16}/>Ver mi actividad y resumen anual</button>
+      <div className="chips">{p.archive.profile.genres?.map(g=><span className="chip" key={g}>{g}</span>)}</div>
+      <PublishProfile archive={p.archive} userId={p.userId} navigate={p.navigate}/>
       <div className="profile-ref-stats">
         {stats.map(([label, count]) => (
           <div key={String(label)}>
@@ -3526,6 +3540,7 @@ function SettingsPage(
           <h2>{section}</h2>
           {section === "Apariencia" ? (
             <>
+              <div className="setting-row"><span><b>Densidad del catálogo</b><p>Elige el tamaño de las tarjetas.</p></span><select aria-label="Densidad del catálogo" value={p.archive.settings.density||"gallery"} onChange={e=>p.update(a=>({...a,settings:{...a.settings,density:e.target.value as "gallery"|"compact"}}))}><option value="gallery">Galería</option><option value="compact">Compacto</option></select></div>
               <div className="setting-theme-group"><div><b>Elige tu ambiente</b><p>El tema cambia colores, texturas, tarjetas y movimiento en toda la app.</p></div><div className="theme-cards" role="radiogroup" aria-label="Estilo visual">
                 {([{id:"cinema",title:"Cine nocturno",subtitle:"Negro, luz de proyector y contrastes",symbol:"✦"},{id:"storybook",title:"Bosque animado",subtitle:"Acuarela, verde musgo y cielo cálido",symbol:"✿"},{id:"kdrama",title:"K-drama",subtitle:"Pétalos, lavanda y romance",symbol:"❀"}] as const).map(t=><button type="button" role="radio" aria-checked={(p.archive.settings.visualTheme||"cinema")===t.id} className={`theme-card theme-card-${t.id} ${(p.archive.settings.visualTheme||"cinema")===t.id?"selected":""}`} key={t.id} onClick={()=>p.update(a=>({...a,settings:{...a.settings,visualTheme:t.id}}))}><span className="theme-symbol">{t.symbol}</span><b>{t.title}</b><small>{t.subtitle}</small><span className="theme-check">{(p.archive.settings.visualTheme||"cinema")===t.id?"✓":""}</span></button>)}</div></div>
               <Toggle
@@ -3580,6 +3595,7 @@ function SettingsPage(
           ) : section === "Reproducción" ? (
             <LocalPlayer
               progress={p.archive.progress || {}}
+              onWatchedSeconds={seconds => p.update(a=>({...a,watchTime:{...a.watchTime,[today()]:(a.watchTime?.[today()]||0)+seconds}}))}
               onProgress={(id, time) =>
                 p.update((a) => ({
                   ...a,

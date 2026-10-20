@@ -1,0 +1,10 @@
+"use client";
+import {useState} from "react";
+import {getSupabase} from "@/lib/archive";
+type Reply={id:string;display_name:string;body:string;created_at:string};
+export default function ReviewReplies({reviewId,userId,displayName,onLogin}:{reviewId:string;userId?:string;displayName:string;onLogin:()=>void}) {
+  const [open,setOpen]=useState(false),[replies,setReplies]=useState<Reply[]>([]),[text,setText]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+  const load=async()=>{try{const c=await getSupabase();if(!c)throw Error();const r=await c.from("review_replies").select("id,display_name,body,created_at").eq("review_id",reviewId).order("created_at").limit(100);if(r.error)throw r.error;setReplies(r.data||[]);}catch{setError("No se pudo cargar la conversación.");}};
+  const submit=async()=>{if(!userId)return onLogin();if(!text.trim())return;setBusy(true);setError("");try{const c=await getSupabase();if(!c)throw Error();const r=await c.from("review_replies").insert({review_id:reviewId,user_id:userId,display_name:displayName.trim().slice(0,45)||"Miembro",body:text.trim()});if(r.error)throw r.error;setText("");await load();}catch{setError("No se pudo publicar tu respuesta.");}finally{setBusy(false);}};
+  return <div className="review-replies"><button className="text-link" onClick={()=>{if(!open)void load();setOpen(v=>!v);}}>{open?"Cerrar conversación":"Ver conversación / responder"}</button>{open&&<><div>{replies.map(r=><div className="reply" key={r.id}><b>{r.display_name}</b><small>{new Date(r.created_at).toLocaleDateString("es-MX")}</small><p>{r.body}</p></div>)}</div>{!replies.length&&!error&&<p>Aún no hay respuestas.</p>}{userId?<><textarea aria-label="Tu respuesta" placeholder="Comparte tu punto de vista…" maxLength={1000} value={text} onChange={e=>setText(e.target.value)}/><button className="btn" disabled={busy||!text.trim()} onClick={submit}>{busy?"Publicando…":"Publicar respuesta"}</button></>:<button className="btn" onClick={onLogin}>Inicia sesión para responder</button>}{error&&<p role="alert">{error}</p>}</>}</div>;
+}

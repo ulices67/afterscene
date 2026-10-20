@@ -48,7 +48,16 @@ export async function GET(request: Request) {
         character: c.character || '', job: c.job || '', poster: portrait(c.poster_path, 'w500'),
         vote: c.vote_average || 0 }))
       .filter((c: any) => c.title);
-    const unique = [...new Map(credits.map((c: any) => [`${c.type}-${c.id}`, c])).values()]
+    const grouped = new Map<string, any>();
+    for (const credit of credits) {
+      const key = `${credit.type}-${credit.id}`, previous = grouped.get(key);
+      if (!previous) grouped.set(key, credit);
+      else grouped.set(key, { ...previous,
+        character: [...new Set([previous.character, credit.character].filter(Boolean))].join(' · '),
+        job: [...new Set([previous.job, credit.job].filter(Boolean))].join(' · '),
+      });
+    }
+    const unique = [...grouped.values()]
       .sort((a: any, b: any) => b.year - a.year || a.title.localeCompare(b.title));
     return Response.json({ person: { id: data.id, name: data.name, biography: data.biography || '',
       birthday: data.birthday || '', placeOfBirth: data.place_of_birth || '', department: department(data.known_for_department || ''),

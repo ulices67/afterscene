@@ -3,7 +3,7 @@ import { cachedFetch } from '@/lib/upstream';
 import { setting } from '@/lib/server-config';
 import { GET as tmdbCatalog } from '../catalog/route';
 
-const malFields = 'id,title,main_picture,alternative_titles,start_date,synopsis,mean,media_type,status,num_episodes,genres,average_episode_duration';
+const malFields = 'id,title,main_picture,alternative_titles,start_date,synopsis,mean,media_type,status,num_episodes,genres,average_episode_duration,studios';
 const currentSeason = () => {
   const now = new Date();
   const month = Number(new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Tokyo',month:'numeric'}).format(now));
@@ -30,6 +30,7 @@ async function queryKitsu(action:string,q:string,id:string,page:number) {
   const root='https://kitsu.io/api/edge';
   const url=new URL(`${root}/${action==='episodes'?`anime/${id}/episodes`:action==='details'?`anime/${id}`:action==='top'?'trending/anime':'anime'}`);
   const offset=(page-1)*20;
+  if(action==='details') url.searchParams.set('include','categories,characters.character');
   if(action==='episodes') url.searchParams.set('sort','number');
   if(action==='search') url.searchParams.set('filter[text]',q);
   if(action==='movies') {url.searchParams.set('filter[subtype]','movie');url.searchParams.set('sort','-averageRating');}
@@ -38,7 +39,7 @@ async function queryKitsu(action:string,q:string,id:string,page:number) {
   const response=await cachedFetch(url.toString(),{headers:{Accept:'application/vnd.api+json'},signal:AbortSignal.timeout(8500)});
   if(!response.ok) throw Error(`Kitsu ${response.status}`);
   const data:any=await response.json();
-  if(action==='details') {if(data.data?.attributes?.nsfw || data.data?.attributes?.ageRating==='R18') throw Error('Contenido no disponible');return {film:fromKitsu(data.data)};}
+  if(action==='details') {if(data.data?.attributes?.nsfw || data.data?.attributes?.ageRating==='R18') throw Error('Contenido no disponible');const film=fromKitsu(data.data);film.genre=(data.included||[]).filter((v:any)=>v.type==='categories').map((v:any)=>v.attributes.title).slice(0,8).join(' · ')||film.genre;film.characters=(data.included||[]).filter((v:any)=>v.type==='characters').slice(0,30).map((v:any)=>({id:v.id,name:v.attributes.canonicalName,photo:v.attributes.image?.original||v.attributes.image?.large||'',description:(v.attributes.description||'').replace(/<[^>]*>/g,'')}));return {film};}
   if(action==='episodes') return {episodes:(data.data||[]).map((e:any)=>({episode_number:e.attributes?.number,name:e.attributes?.canonicalTitle||e.attributes?.titles?.en_jp||`Episodio ${e.attributes?.number}`,overview:e.attributes?.synopsis||'',air_date:e.attributes?.airdate||''})),hasNext:!!data.links?.next};
   const results=(data.data||[]).filter((e:any)=>!e.attributes?.nsfw && e.attributes?.ageRating!=='R18').map(fromKitsu);
   return {results,total_pages:data.links?.next?page+1:page,page};

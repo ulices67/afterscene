@@ -23,6 +23,7 @@ export default function ProfileEditor({profile,onSave}:{profile:Archive['profile
     <label>Nombre<input required maxLength={45} value={draft.name} onChange={e=>setDraft(d=>({...d,name:e.target.value}))}/></label>
     <label>Alias<input maxLength={30} pattern="[a-zA-Z0-9_.-]*" placeholder="Tu alias" value={draft.handle||''} onChange={e=>setDraft(d=>({...d,handle:e.target.value}))}/></label>
     <label>Biografía<textarea rows={3} maxLength={240} value={draft.bio} onChange={e=>setDraft(d=>({...d,bio:e.target.value}))}/></label>
+    <fieldset className="genre-choices"><legend>Géneros favoritos</legend><div className="chips">{['Drama','Comedia','Acción','Ciencia ficción','Fantasía','Romance','Animación','Terror','Misterio','Aventura'].map(genre=><button key={genre} type="button" className={`chip ${draft.genres?.includes(genre)?'active':''}`} aria-pressed={draft.genres?.includes(genre)||false} onClick={()=>setDraft(d=>({...d,genres:d.genres?.includes(genre)?d.genres.filter(g=>g!==genre):[...(d.genres||[]),genre]}))}>{genre}</button>)}</div></fieldset>
     <label>Ubicación<input maxLength={80} placeholder="Opcional" value={draft.location||''} onChange={e=>setDraft(d=>({...d,location:e.target.value}))}/></label>
     <label className="accent-picker">Color de acento<input type="color" value={draft.accent||'#e4e4e7'} onChange={e=>setDraft(d=>({...d,accent:e.target.value}))}/></label>
     <p className="eyebrow">HASTA CUATRO HISTORIAS FAVORITAS</p>

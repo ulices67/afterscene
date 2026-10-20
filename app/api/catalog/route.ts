@@ -51,6 +51,13 @@ export async function GET(request: Request) {
   }
   if (action === "discover" && category === "K-dramas")
     target.searchParams.set("with_origin_country", "KR");
+  if (action === "discover" && type === "movie" && u.searchParams.get("upcoming") === "true") {
+    const start = new Date(), end = new Date(start);
+    end.setDate(end.getDate() + 60);
+    target.searchParams.set("primary_release_date.gte", start.toISOString().slice(0,10));
+    target.searchParams.set("primary_release_date.lte", end.toISOString().slice(0,10));
+    target.searchParams.set("sort_by", "popularity.desc");
+  }
   try {
     const response = await cachedFetch(target.toString(), {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },

@@ -19,3 +19,14 @@ test('MAL and Kitsu keep distinct real identities and direct artwork',()=>{
 test('Multi search respects explicit movie type even with TV hint',()=>{
  assert.equal(fromTMDB({id:5555,media_type:'movie',title:'Fixture'},'tv').type,'movie');
 });
+
+test('Detailed titles retain real person IDs, artwork and episode dates',()=>{
+ const f=fromTMDB({id:123542,name:'LINK CLICK',next_episode_to_air:{name:'Next',air_date:'2026-11-01',season_number:3,episode_number:2},credits:{cast:[{id:1674213,name:'苏尚卿',profile_path:'/portrait.jpg',character:'Cheng Xiaoshi'}],crew:[]},'watch/providers':{results:{MX:{flatrate:[{provider_name:'Provider'}]}}}},'tv');
+ assert.equal(f.castMembers[0].id,1674213);assert.equal(f.castMembers[0].photo,'https://image.tmdb.org/t/p/w185/portrait.jpg');assert.equal(f.castMembers[0].role,'Cheng Xiaoshi');assert.equal(f.nextEpisode.date,'2026-11-01');assert.deepEqual(f.watchProviders.MX,['Provider (flatrate)']);
+ const missing=fromTMDB({id:987654,title:'Fixture',credits:{cast:[{id:15,name:'Name',profile_path:null}]}});
+ assert.equal(missing.castMembers[0].photo,'');assert.equal(missing.nextEpisode,undefined);
+});
+test('New activity fields survive export while invalid watch time is rejected',()=>{
+ const a=structuredClone(seed);a.watchTime={'2026-10-20':120};a.activity=[{id:'event1',film:'interstellar',action:'Estado: Terminadas',date:'2026-10-20T12:00:00.000Z'}];a.library.interstellar={status:'completed',favorite:false,added:'2026-10-20',completedAt:'2026-10-20T12:00:00.000Z'};a.settings.density='compact';a.profile.genres=['Drama'];assert.ok(isArchive(JSON.parse(JSON.stringify(a))));
+ a.watchTime['2026-10-20']=-1;assert.equal(isArchive(a),false);
+});
