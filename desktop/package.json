@@ -1,0 +1,48 @@
+{
+  "name": "afterscene-desktop",
+  "productName": "AFTERSCENE",
+  "version": "0.1.0",
+  "description": "Tu archivo cinematográfico personal",
+  "author": "AFTERSCENE",
+  "homepage": "https://afterscene.el-ulicesss.workers.dev/descargar",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --win dir",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^44.9.2",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.afterscene.desktop",
+    "productName": "AFTERSCENE",
+    "asar": true,
+    "electronDist": ".cache/electron-dist",
+    "electronDownload": { "cache": ".cache/electron" },
+    "directories": { "output": "../release", "buildResources": "assets" },
+    "files": [ "main.cjs", "offline.html", "assets/afterscene.ico", "package.json" ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/afterscene.ico",
+      "artifactName": "AFTERSCENE-Setup.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AFTERSCENE",
+      "runAfterFinish": true,
+      "language": "3082",
+      "installerLanguages": ["es_ES"],
+      "installerIcon": "assets/afterscene.ico",
+      "uninstallerIcon": "assets/afterscene.ico",
+      "installerSidebar": "assets/installerSidebar.bmp",
+      "uninstallerSidebar": "assets/installerSidebar.bmp"
+    }
+  }
+}

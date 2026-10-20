@@ -3017,7 +3017,8 @@ small {
   display: flex;
   flex-direction: column;
 }
-.mobile-menu-list > button {
+.mobile-menu-list > button,
+.mobile-menu-list > a {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -3027,7 +3028,8 @@ small {
   font-size: 13px;
   color: #cdcdcd;
 }
-.mobile-menu-list > button > svg:last-child {
+.mobile-menu-list > button > svg:last-child,
+.mobile-menu-list > a > svg:last-child {
   margin-left: auto;
   color: #717171;
 }

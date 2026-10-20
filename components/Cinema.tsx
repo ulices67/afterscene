@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {
   useEffect,
   useRef,
@@ -629,6 +630,10 @@ export default function Cinema() {
                 <Settings size={17} />
                 Configuración
               </button>
+              <Link className="nav-item" href="/descargar">
+                <Download size={17} />
+                Descargar app
+              </Link>
               <button
                 className="profile-link"
                 aria-label="Abrir mi espacio personal"
@@ -792,6 +797,7 @@ export default function Cinema() {
                   <ChevronRight size={18} />
                 </button>
               ))}
+              <Link href="/descargar"><Download size={20} /> Descargar app <ChevronRight size={18} /></Link>
             </div>
           </Modal>
           <Modal
